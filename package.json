@@ -1,6 +1,6 @@
 {
   "name": "inspecto",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "inspecto — Claude Code session quality analyzer. Grade sessions, detect regressions, catch cache bugs.",
   "type": "module",
   "main": "./dist/index.js",
