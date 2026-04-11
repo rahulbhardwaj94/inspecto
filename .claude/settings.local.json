@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(node dist/index.js)",
+      "Bash(node dist/index.js trend --since 30d)",
+      "Bash(node dist/index.js cache-check)",
+      "Bash(node dist/index.js --json)",
+      "Bash(npm test:*)",
+      "Bash(node dist/index.js --help)",
+      "Bash(node dist/index.js --version)"
+    ]
+  }
+}

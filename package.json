@@ -1,0 +1,45 @@
+{
+  "name": "cc-audit",
+  "version": "1.0.0",
+  "description": "Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "cc-audit": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "claude-code",
+    "ai-quality",
+    "session-analysis",
+    "token-usage",
+    "developer-tools",
+    "cli"
+  ],
+  "author": "Rahul Bhardwaj",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}
