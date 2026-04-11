@@ -23,6 +23,9 @@ The others answer *"how much did I spend?"*
 
 `inspecto` answers: **"Is Claude Code getting worse for me — and can I prove it?"**
 
+<img width="427" height="338" alt="Screenshot 2026-04-11 at 6 00 37 PM" src="https://github.com/user-attachments/assets/81777511-dd45-4ae0-8382-8e008dd98a7a" />
+
+
 ---
 
 ## Install
