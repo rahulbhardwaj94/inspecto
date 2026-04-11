@@ -1,6 +1,6 @@
 {
   "name": "inspecto",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "inspecto — Claude Code session quality analyzer. Grade sessions, detect regressions, catch cache bugs.",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,11 +16,15 @@
   },
   "keywords": [
     "claude-code",
-    "ai-quality",
+    "claude-code-quality",
+    "session-grader",
+    "ai-regression",
     "session-analysis",
     "token-usage",
+    "cache-hit-rate",
     "developer-tools",
-    "cli"
+    "cli",
+    "anthropic"
   ],
   "author": "Rahul Bhardwaj",
   "license": "MIT",

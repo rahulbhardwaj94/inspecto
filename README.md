@@ -1,13 +1,27 @@
 # inspecto
 
+[![npm version](https://img.shields.io/npm/v/inspecto)](https://www.npmjs.com/package/inspecto)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
 > AMD's AI director manually analyzed 7,000 Claude Code sessions to prove it got worse.
 > `inspecto` automates that analysis for every developer.
 
-Three tools already count tokens (`ccusage`, `claude-usage`, `Claude-Code-Usage-Monitor`). They answer *"how much did I spend?"*
+| | `ccusage` | `claude-usage` | `Claude-Code-Usage-Monitor` | **`inspecto`** |
+|---|---|---|---|---|
+| Tracks token spend | ✅ | ✅ | ✅ | ✅ |
+| Answers *"how much did I spend?"* | ✅ | ✅ | ✅ | ✅ |
+| Detects quality regressions | ❌ | ❌ | ❌ | **✅** |
+| Grades Claude's behavior | ❌ | ❌ | ❌ | **✅** |
+| Catches silent cache bugs | ❌ | ❌ | ❌ | **✅** |
+| Flags lazy editing patterns | ❌ | ❌ | ❌ | **✅** |
+| Works fully offline, no API key | ✅ | ✅ | ✅ | **✅** |
 
-`inspecto` answers a different question: **"Is Claude Code getting worse for me, and can I prove it?"**
+The others answer *"how much did I spend?"*
+
+`inspecto` answers: **"Is Claude Code getting worse for me — and can I prove it?"**
 
 ---
 
