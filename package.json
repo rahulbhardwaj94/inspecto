@@ -1,11 +1,11 @@
 {
-  "name": "cc-audit",
+  "name": "inspecto",
   "version": "1.0.0",
-  "description": "Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs",
+  "description": "inspecto — Claude Code session quality analyzer. Grade sessions, detect regressions, catch cache bugs.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "cc-audit": "./dist/index.js"
+    "inspecto": "dist/index.js"
   },
   "scripts": {
     "build": "tsup",
@@ -41,5 +41,16 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahulbhardwaj94/inspecto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rahulbhardwaj94/inspecto/issues"
+  },
+  "homepage": "https://github.com/rahulbhardwaj94/inspecto#readme"
 }

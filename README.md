@@ -1,26 +1,26 @@
-# cc-audit
+# inspecto
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
 > AMD's AI director manually analyzed 7,000 Claude Code sessions to prove it got worse.
-> `cc-audit` automates that analysis for every developer.
+> `inspecto` automates that analysis for every developer.
 
 Three tools already count tokens (`ccusage`, `claude-usage`, `Claude-Code-Usage-Monitor`). They answer *"how much did I spend?"*
 
-`cc-audit` answers a different question: **"Is Claude Code getting worse for me, and can I prove it?"**
+`inspecto` answers a different question: **"Is Claude Code getting worse for me, and can I prove it?"**
 
 ---
 
 ## Install
 
 ```bash
-npm install -g cc-audit
+npm install -g inspecto
 ```
 
 Or run without installing:
 
 ```bash
-npx cc-audit
+npx inspecto
 ```
 
 Requires Node.js >= 18. Works on macOS, Linux, and Windows.
@@ -32,11 +32,11 @@ Requires Node.js >= 18. Works on macOS, Linux, and Windows.
 ### Grade your most recent session
 
 ```bash
-npx cc-audit
+npx inspecto
 ```
 
 ```
-  cc-audit v1.0.0 — Claude Code Session Quality Analyzer
+  inspecto v1.0.0 — Claude Code Session Quality Analyzer
 
   Session: 31f3f224 | my-app | 47 min | claude-opus-4-6
 
@@ -56,7 +56,7 @@ npx cc-audit
 ### Detect regressions over time
 
 ```bash
-npx cc-audit trend --since 14d
+npx inspecto trend --since 14d
 ```
 
 Compares the most recent half of your sessions against the full period and flags metrics that have regressed by more than 30%.
@@ -64,7 +64,7 @@ Compares the most recent half of your sessions against the full period and flags
 ### Catch the prompt cache bug
 
 ```bash
-npx cc-audit cache-check
+npx inspecto cache-check
 ```
 
 On March 31, 2026, the leaked Claude Code source revealed two cache bugs that silently inflate token costs 10-20x. This command detects sessions where the cache hit rate is suspiciously low.
@@ -72,7 +72,7 @@ On March 31, 2026, the leaked Claude Code source revealed two cache bugs that si
 ### Compare projects
 
 ```bash
-npx cc-audit compare --projects my-app,api-gateway,shared-lib
+npx inspecto compare --projects my-app,api-gateway,shared-lib
 ```
 
 ### Global options
@@ -106,7 +106,7 @@ Each metric is a pure function computed from your local session files. No data l
 
 Claude Code writes one JSONL session file per conversation to `~/.claude/projects/{project}/{sessionId}.jsonl`. Each line is a JSON record — user messages, assistant responses (streamed as multiple chunks), tool calls, and tool results.
 
-`cc-audit` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, extracts tool-use patterns and token usage, and computes the 7 metrics above.
+`inspecto` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, extracts tool-use patterns and token usage, and computes the 7 metrics above.
 
 The composite grade is a weighted average mapped to a letter grade from **A+** to **F**.
 
@@ -121,15 +121,15 @@ In the last 30 days before this tool was built:
 - **Mar 31, 2026** — Claude Code's source leaked via npm, revealing 2 cache bugs that silently inflate costs 10-20x
 - **Mar 26, 2026** — Users on the $100/mo plan reported burning through limits in 90 minutes instead of 5 hours
 
-The tools that track token spending tell you *what* you used. `cc-audit` tells you *whether it was worth it*.
+The tools that track token spending tell you *what* you used. `inspecto` tells you *whether it was worth it*.
 
 ---
 
 ## Development
 
 ```bash
-git clone https://github.com/rahulbhardwaj94/cc-audit.git
-cd cc-audit
+git clone https://github.com/rahulbhardwaj94/inspecto.git
+cd inspecto
 npm install
 npm test
 npm run build

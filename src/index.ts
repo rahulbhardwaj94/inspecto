@@ -1,5 +1,5 @@
 /**
- * cc-audit — Claude Code Session Quality Analyzer
+ * inspecto — Claude Code Session Quality Analyzer
  *
  * Grade sessions, detect regressions, catch cache bugs.
  * All from the JSONL logs Claude Code already writes.
@@ -14,7 +14,7 @@ import { runCompare } from "./commands/compare.js";
 const program = new Command();
 
 program
-  .name("cc-audit")
+  .name("inspecto")
   .description("Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs")
   .version("1.0.0");
 

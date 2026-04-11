@@ -36,7 +36,7 @@ export function renderAuditReport(session: Session, grade: GradeResult): string 
   const lines: string[] = [];
 
   lines.push("");
-  lines.push(chalk.bold("  cc-audit v1.0.0") + chalk.dim(" — Claude Code Session Quality Analyzer"));
+  lines.push(chalk.bold("  inspecto v1.0.0") + chalk.dim(" — Claude Code Session Quality Analyzer"));
   lines.push("");
 
   const sessionInfo = [
