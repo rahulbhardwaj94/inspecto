@@ -128,7 +128,7 @@ The tools that track token spending tell you *what* you used. `cc-audit` tells y
 ## Development
 
 ```bash
-git clone https://github.com/your-username/cc-audit.git
+git clone https://github.com/rahulbhardwaj94/cc-audit.git
 cd cc-audit
 npm install
 npm test
