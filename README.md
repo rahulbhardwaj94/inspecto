@@ -6,6 +6,10 @@
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
+> CLI to grade Claude Code sessions — 750+ weekly downloads in first week.
+
+
+
 > AMD's AI director manually analyzed 7,000 Claude Code sessions to prove it got worse.
 > `inspecto` automates that analysis for every developer.
 
