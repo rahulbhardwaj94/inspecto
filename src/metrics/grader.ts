@@ -14,6 +14,10 @@ import { computeRetryDensity } from "./retry-density.js";
 import { computeToolDiversity } from "./tool-diversity.js";
 import { computeTokensPerEdit } from "./tokens-per-edit.js";
 import { computeSubagentOverhead } from "./subagent-overhead.js";
+import { computeToolErrorRate } from "./tool-error-rate.js";
+import { computeThinkingUtilization } from "./thinking-utilization.js";
+import { computeMcpUsage } from "./mcp-usage.js";
+import { computeSessionCost } from "./session-cost.js";
 
 interface MetricWeight {
   compute: (session: Session) => MetricResult;
@@ -25,43 +29,43 @@ interface MetricWeight {
 const METRIC_WEIGHTS: MetricWeight[] = [
   {
     compute: computeReadsPerEdit,
-    weight: 0.2,
+    weight: 0.14,
     // 0 reads → 0, 2 reads → 50, 4+ reads → 100
     score: (v) => clamp(v / 4 * 100, 0, 100),
   },
   {
     compute: computeRewriteRatio,
-    weight: 0.15,
+    weight: 0.11,
     // 0 ratio → 100, 0.25 → 50, 0.5+ → 0 (inverted: lower is better)
     score: (v) => clamp((1 - v / 0.5) * 100, 0, 100),
   },
   {
     compute: computeCacheHitRate,
-    weight: 0.15,
+    weight: 0.11,
     // 0% → 0, 50% → 100
     score: (v) => clamp(v / 0.5 * 100, 0, 100),
   },
   {
     compute: computeTaskCompletion,
-    weight: 0.15,
+    weight: 0.10,
     // 0.7 → 0, 0.9 → 50, 1.0 → 100
     score: (v) => clamp((v - 0.7) / 0.3 * 100, 0, 100),
   },
   {
     compute: computeRetryDensity,
-    weight: 0.1,
+    weight: 0.07,
     // 0% → 100, 10% → 60, 25%+ → 0 (inverted)
     score: (v) => clamp((1 - v / 0.25) * 100, 0, 100),
   },
   {
     compute: computeToolDiversity,
-    weight: 0.05,
+    weight: 0.06,
     // 0 → 0, 0.4 → 50, 0.6+ → 100
     score: (v) => clamp(v / 0.6 * 100, 0, 100),
   },
   {
     compute: computeTokensPerEdit,
-    weight: 0.15,
+    weight: 0.11,
     // 5000 → 100, 10000 → 50, 15000+ → 0 (inverted)
     score: (v) => clamp((1 - (v - 5000) / 10000) * 100, 0, 100),
   },
@@ -70,6 +74,30 @@ const METRIC_WEIGHTS: MetricWeight[] = [
     weight: 0.05,
     // main ratio 0 → 100, 0.6 → 100 (threshold), 0.8 → 50, 1.0 → 0 (inverted)
     score: (v) => clamp((1 - v) / 0.4 * 100, 0, 100),
+  },
+  {
+    compute: computeToolErrorRate,
+    weight: 0.08,
+    // 0% → 100, 5% → 83, 15% → 50, 30%+ → 0 (inverted: lower is better)
+    score: (v) => clamp((1 - v / 0.30) * 100, 0, 100),
+  },
+  {
+    compute: computeThinkingUtilization,
+    weight: 0.07,
+    // 0% → 0, 10% → 33, 30%+ → 100
+    score: (v) => clamp(v / 0.30 * 100, 0, 100),
+  },
+  {
+    compute: computeMcpUsage,
+    weight: 0.05,
+    // Informational: always contributes max score
+    score: (_v) => 100,
+  },
+  {
+    compute: computeSessionCost,
+    weight: 0.05,
+    // $0 → 100, $5 → 50, $10+ → 0 (inverted: lower cost is better)
+    score: (v) => clamp((1 - v / 10) * 100, 0, 100),
   },
 ];
 

@@ -162,10 +162,10 @@ describe("gradeSession", () => {
     expect(["D", "D-", "F"]).toContain(grade.letter);
   });
 
-  it("returns all 8 metrics", async () => {
+  it("returns all 12 metrics", async () => {
     const session = await loadFixture("healthy-session");
     const grade = gradeSession(session);
-    expect(grade.metrics.length).toBe(8);
+    expect(grade.metrics.length).toBe(12);
   });
 
   it("handles minimal sessions gracefully", async () => {

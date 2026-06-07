@@ -34,6 +34,18 @@ const TIPS: Record<string, Record<string, string>> = {
     warning: "Tokens per edit is above average. Claude may be verbose without being productive.",
     critical: "Very high token cost per edit. Claude is burning tokens without proportional output.",
   },
+  "tool-error-rate": {
+    warning: "Elevated tool error rate. Claude may be calling tools with invalid arguments or on wrong paths.",
+    critical: "High tool error rate. Frequent tool failures indicate misaligned inputs or environment issues.",
+  },
+  "thinking-utilization": {
+    warning: "Extended thinking is underutilized. Enable it in your Claude Code settings for complex tasks.",
+    critical: "No extended thinking detected on tool-using turns. Complex tasks benefit greatly from thinking blocks.",
+  },
+  "session-cost": {
+    warning: "Session cost is above $2. Consider breaking long sessions into smaller focused tasks.",
+    critical: "Session cost exceeds $5. Review if Claude is re-reading large files or running redundant operations.",
+  },
 };
 
 export function getTip(metric: MetricResult): string | null {
