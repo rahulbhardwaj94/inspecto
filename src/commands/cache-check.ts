@@ -16,6 +16,8 @@ export interface CacheCheckOptions {
   since?: string;
   json?: boolean;
   dataDir?: string;
+  /** false when --no-fail is passed; defaults to true via Commander */
+  fail?: boolean;
 }
 
 export async function runCacheCheck(options: CacheCheckOptions): Promise<void> {
@@ -52,5 +54,9 @@ export async function runCacheCheck(options: CacheCheckOptions): Promise<void> {
     console.log(formatCacheCheckJson(results));
   } else {
     console.log(renderCacheCheckReport(results));
+  }
+
+  if (options.fail !== false && results.some((r) => r.isAnomaly)) {
+    process.exitCode = 1;
   }
 }

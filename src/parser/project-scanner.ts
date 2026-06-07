@@ -79,6 +79,7 @@ export async function scanSessions(options?: {
                   sessionId,
                   projectSlug: projectDir,
                   mtime: fileStat.mtime,
+                  birthtime: fileStat.birthtime,
                   subagentPaths,
                 } as SessionFile;
               } catch {

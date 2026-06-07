@@ -11,6 +11,7 @@ import { runAudit } from "./commands/audit.js";
 import { runTrend } from "./commands/trend.js";
 import { runCacheCheck } from "./commands/cache-check.js";
 import { runCompare } from "./commands/compare.js";
+import { runList } from "./commands/list.js";
 import { runConfigValidate } from "./commands/config-validate.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
@@ -26,9 +27,11 @@ program
   .command("audit", { isDefault: true })
   .description("Grade the most recent Claude Code session")
   .option("--json", "Output as JSON")
+  .option("--format <format>", "Output format: json, csv")
   .option("--verbose", "Show per-message breakdown")
   .option("--data-dir <path>", "Custom Claude data directory")
   .option("--project <name>", "Filter to a specific project")
+  .option("--no-fail", "Always exit 0, even for D/F grades")
   .action(async (options) => {
     try {
       await runAudit(options);
@@ -42,8 +45,10 @@ program
   .description("Analyze quality trends and detect regressions over time")
   .option("--since <duration>", "Time range: 7d, 14d, 30d", "7d")
   .option("--json", "Output as JSON")
+  .option("--format <format>", "Output format: json, csv")
   .option("--data-dir <path>", "Custom Claude data directory")
   .option("--project <name>", "Filter to a specific project")
+  .option("--no-fail", "Always exit 0, even on regressions")
   .action(async (options) => {
     try {
       await runTrend(options);
@@ -58,6 +63,7 @@ program
   .option("--since <duration>", "Time range: 7d, 14d, 30d", "7d")
   .option("--json", "Output as JSON")
   .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--no-fail", "Always exit 0, even when anomalies are detected")
   .action(async (options) => {
     try {
       await runCacheCheck(options);
@@ -73,9 +79,24 @@ program
   .option("--json", "Output as JSON")
   .option("--data-dir <path>", "Custom Claude data directory")
   .option("--since <duration>", "Time range: 7d, 14d, 30d")
+  .option("--no-fail", "No-op (compare always exits 0)")
   .action(async (options) => {
     try {
       await runCompare(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("list")
+  .description("List discovered projects and sessions")
+  .option("--sessions", "Show 20 most recent sessions instead of projects")
+  .option("--project <name>", "Filter to sessions for a specific project")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .action(async (options) => {
+    try {
+      await runList(options);
     } catch (error) {
       handleError(error);
     }

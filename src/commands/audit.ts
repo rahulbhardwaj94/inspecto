@@ -9,6 +9,7 @@ import { buildSession } from "../parser/session-builder.js";
 import { gradeSession } from "../metrics/grader.js";
 import { renderAuditReport } from "../reporter/terminal.js";
 import { formatAuditJson } from "../reporter/json-reporter.js";
+import { exportAuditCsv } from "../reporter/csv-reporter.js";
 import { loadConfig } from "../config/loader.js";
 
 const KNOWN_FORMAT_VERSION = "2.1.167";
@@ -18,6 +19,9 @@ export interface AuditOptions {
   verbose?: boolean;
   dataDir?: string;
   project?: string;
+  /** false when --no-fail is passed; defaults to true via Commander */
+  fail?: boolean;
+  format?: string;
 }
 
 export async function runAudit(options: AuditOptions): Promise<void> {
@@ -39,23 +43,28 @@ export async function runAudit(options: AuditOptions): Promise<void> {
 
   const grade = gradeSession(session, config);
 
-  if (options.json) {
+  if (options.json || options.format === "json") {
     console.log(formatAuditJson(session, grade));
-    return;
+  } else if (options.format === "csv") {
+    console.log(exportAuditCsv(grade));
+  } else {
+    if (session.formatVersion && session.formatVersion !== KNOWN_FORMAT_VERSION) {
+      console.log(
+        chalk.yellow(
+          `⚠ JSONL format version ${session.formatVersion} detected (expected ${KNOWN_FORMAT_VERSION}). Metrics may be inaccurate.`,
+        ),
+      );
+    }
+
+    if (session.unknownRecordTypes.size > 0) {
+      const types = [...session.unknownRecordTypes].sort().join(", ");
+      process.stdout.write(chalk.dim(`Note: skipped unknown record types: ${types}\n`));
+    }
+
+    console.log(renderAuditReport(session, grade));
   }
 
-  if (session.formatVersion && session.formatVersion !== KNOWN_FORMAT_VERSION) {
-    console.log(
-      chalk.yellow(
-        `⚠ JSONL format version ${session.formatVersion} detected (expected ${KNOWN_FORMAT_VERSION}). Metrics may be inaccurate.`,
-      ),
-    );
+  if (options.fail !== false && grade.score < 67) {
+    process.exitCode = 1;
   }
-
-  if (session.unknownRecordTypes.size > 0) {
-    const types = [...session.unknownRecordTypes].sort().join(", ");
-    process.stdout.write(chalk.dim(`Note: skipped unknown record types: ${types}\n`));
-  }
-
-  console.log(renderAuditReport(session, grade));
 }

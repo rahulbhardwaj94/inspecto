@@ -211,5 +211,6 @@ export interface SessionFile {
   sessionId: string;
   projectSlug: string;
   mtime: Date;
+  birthtime?: Date;
   subagentPaths?: string[];
 }

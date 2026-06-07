@@ -10,6 +10,7 @@ import { computeBaselines } from "../anomaly/baseline.js";
 import { detectRegressions } from "../anomaly/regression-detector.js";
 import { renderTrendReport } from "../reporter/terminal.js";
 import { formatTrendJson } from "../reporter/json-reporter.js";
+import { exportTrendCsv } from "../reporter/csv-reporter.js";
 import { parseDuration } from "../utils/duration.js";
 import { concurrentSettled } from "../utils/concurrent.js";
 import { getCachedGrade, setCachedGrade } from "../cache/grade-cache.js";
@@ -23,6 +24,9 @@ export interface TrendOptions {
   json?: boolean;
   dataDir?: string;
   project?: string;
+  /** false when --no-fail is passed; defaults to true via Commander */
+  fail?: boolean;
+  format?: string;
 }
 
 export async function runTrend(options: TrendOptions): Promise<void> {
@@ -64,9 +68,15 @@ export async function runTrend(options: TrendOptions): Promise<void> {
   const baselines = computeBaselines(grades, recentCount);
   const regressions = detectRegressions(baselines);
 
-  if (options.json) {
+  if (options.json || options.format === "json") {
     console.log(formatTrendJson(regressions));
+  } else if (options.format === "csv") {
+    console.log(exportTrendCsv(regressions));
   } else {
     console.log(renderTrendReport(regressions, grades.length, duration));
+  }
+
+  if (options.fail !== false && regressions.some((r) => r.status === "regression")) {
+    process.exitCode = 1;
   }
 }
