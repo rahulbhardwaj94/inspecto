@@ -43,7 +43,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
       const settled = await Promise.allSettled(
         sessionFiles.map(async (sf) => {
           const records = readJsonl(sf.path);
-          const session = await buildSession(records, sf.sessionId, sf.projectSlug);
+          const session = await buildSession(records, sf.sessionId, sf.projectSlug, sf.subagentPaths);
           return gradeSession(session);
         }),
       );

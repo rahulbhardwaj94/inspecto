@@ -8,13 +8,14 @@
  * - Synthetic records (model: "<synthetic>") and errored turns are excluded.
  */
 
+import { basename } from "node:path";
+import { readJsonl } from "./jsonl-reader.js";
 import type {
   AssistantRecord,
   ContentBlock,
   MergedTurn,
   RawRecord,
   Session,
-  SKIP_TYPES,
   UsageData,
   UserRecord,
 } from "./types.js";
@@ -32,13 +33,14 @@ interface AssistantAccumulator {
  * @param records - AsyncIterable of raw JSONL records (from readJsonl)
  * @param sessionId - The session ID (from filename)
  * @param projectSlug - The project slug (from parent directory name)
+ * @param subagentPaths - Optional paths to subagent JSONL files to merge in
  */
 export async function buildSession(
   records: AsyncIterable<RawRecord>,
   sessionId: string,
   projectSlug: string,
+  subagentPaths?: string[],
 ): Promise<Session> {
-  const assistantChunks = new Map<string, AssistantAccumulator>();
   const turns: MergedTurn[] = [];
 
   let cwd = "";
@@ -47,42 +49,57 @@ export async function buildSession(
   let firstTimestamp = "";
   let lastTimestamp = "";
 
-  for await (const record of records) {
-    // Skip non-conversation record types
-    if (isSkippable(record.type)) continue;
+  async function processRecords(
+    stream: AsyncIterable<RawRecord>,
+    agentId: string | undefined,
+  ) {
+    const assistantChunks = new Map<string, AssistantAccumulator>();
 
-    if (record.type === "user") {
-      const userRecord = record as UserRecord;
-      handleUserRecord(userRecord, turns);
-      captureMetadata(userRecord);
-    } else if (record.type === "assistant") {
-      const assistantRecord = record as AssistantRecord;
+    for await (const record of stream) {
+      if (isSkippable(record.type)) continue;
 
-      // Skip synthetic context-management records
-      if (assistantRecord.message.model === "<synthetic>") continue;
-      // Skip errored API responses
-      if (assistantRecord.error) continue;
+      if (record.type === "user") {
+        const userRecord = record as UserRecord;
+        handleUserRecord(userRecord, agentId);
+        captureMetadata(userRecord);
+      } else if (record.type === "assistant") {
+        const assistantRecord = record as AssistantRecord;
+        if (assistantRecord.message.model === "<synthetic>") continue;
+        if (assistantRecord.error) continue;
+        handleAssistantChunk(assistantRecord, assistantChunks);
+        captureMetadata(assistantRecord);
+      }
+    }
 
-      handleAssistantChunk(assistantRecord, assistantChunks);
-      captureMetadata(assistantRecord);
+    // Flush all accumulated assistant chunks into turns
+    for (const [, acc] of assistantChunks) {
+      turns.push({
+        role: "assistant",
+        content: acc.content,
+        usage: acc.usage,
+        complete: acc.complete,
+        timestamp: acc.timestamp,
+        isHumanTurn: false,
+        model: acc.model,
+        agentId,
+      });
     }
   }
 
-  // Flush all accumulated assistant chunks into turns
-  for (const [, acc] of assistantChunks) {
-    turns.push({
-      role: "assistant",
-      content: acc.content,
-      usage: acc.usage,
-      complete: acc.complete,
-      timestamp: acc.timestamp,
-      isHumanTurn: false,
-      model: acc.model,
-    });
+  await processRecords(records, undefined);
+
+  for (const agentPath of subagentPaths ?? []) {
+    const agentId = basename(agentPath, ".jsonl");
+    await processRecords(readJsonl(agentPath), agentId);
   }
 
-  // Sort all turns by timestamp
+  // Sort all turns (main + subagents) by timestamp
   turns.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  const subagentIds = new Set(
+    turns.filter((t) => t.agentId !== undefined).map((t) => t.agentId!),
+  );
+  const subagentTurnCount = turns.filter((t) => t.agentId !== undefined).length;
 
   return {
     id: sessionId,
@@ -93,9 +110,12 @@ export async function buildSession(
     endTime: lastTimestamp,
     cwd,
     gitBranch,
-    durationMs: firstTimestamp && lastTimestamp
-      ? new Date(lastTimestamp).getTime() - new Date(firstTimestamp).getTime()
-      : 0,
+    durationMs:
+      firstTimestamp && lastTimestamp
+        ? new Date(lastTimestamp).getTime() - new Date(firstTimestamp).getTime()
+        : 0,
+    subagentCount: subagentIds.size,
+    subagentTurnCount,
   };
 
   // -- Inner helpers --------------------------------------------------------
@@ -121,11 +141,9 @@ export async function buildSession(
     }
   }
 
-  function handleUserRecord(record: UserRecord, turns: MergedTurn[]) {
+  function handleUserRecord(record: UserRecord, agentId: string | undefined) {
     const content = record.message.content;
-    const isHumanTurn =
-      typeof content === "string" && !record.isMeta;
-
+    const isHumanTurn = typeof content === "string" && !record.isMeta;
     turns.push({
       role: "user",
       content: normalizeContent(content),
@@ -133,6 +151,7 @@ export async function buildSession(
       complete: true,
       timestamp: record.timestamp,
       isHumanTurn,
+      agentId,
     });
   }
 

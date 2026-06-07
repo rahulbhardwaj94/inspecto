@@ -35,7 +35,7 @@ export async function runCacheCheck(options: CacheCheckOptions): Promise<void> {
   const settled = await Promise.allSettled(
     sessionFiles.map(async (sf) => {
       const records = readJsonl(sf.path);
-      const session = await buildSession(records, sf.sessionId, sf.projectSlug);
+      const session = await buildSession(records, sf.sessionId, sf.projectSlug, sf.subagentPaths);
       return checkCacheAnomaly(session);
     }),
   );

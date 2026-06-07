@@ -1,5 +1,5 @@
 /**
- * Composite grading from all 7 quality metrics.
+ * Composite grading from all 8 quality metrics.
  *
  * Each metric is scored 0-100 based on its thresholds, then weighted
  * into a composite score mapped to a letter grade A+ through F.
@@ -13,6 +13,7 @@ import { computeTaskCompletion } from "./task-completion.js";
 import { computeRetryDensity } from "./retry-density.js";
 import { computeToolDiversity } from "./tool-diversity.js";
 import { computeTokensPerEdit } from "./tokens-per-edit.js";
+import { computeSubagentOverhead } from "./subagent-overhead.js";
 
 interface MetricWeight {
   compute: (session: Session) => MetricResult;
@@ -54,7 +55,7 @@ const METRIC_WEIGHTS: MetricWeight[] = [
   },
   {
     compute: computeToolDiversity,
-    weight: 0.1,
+    weight: 0.05,
     // 0 → 0, 0.4 → 50, 0.6+ → 100
     score: (v) => clamp(v / 0.6 * 100, 0, 100),
   },
@@ -63,6 +64,12 @@ const METRIC_WEIGHTS: MetricWeight[] = [
     weight: 0.15,
     // 5000 → 100, 10000 → 50, 15000+ → 0 (inverted)
     score: (v) => clamp((1 - (v - 5000) / 10000) * 100, 0, 100),
+  },
+  {
+    compute: computeSubagentOverhead,
+    weight: 0.05,
+    // main ratio 0 → 100, 0.6 → 100 (threshold), 0.8 → 50, 1.0 → 0 (inverted)
+    score: (v) => clamp((1 - v) / 0.4 * 100, 0, 100),
   },
 ];
 

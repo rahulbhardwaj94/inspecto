@@ -27,6 +27,7 @@ export async function runAudit(options: AuditOptions): Promise<void> {
     records,
     sessionFile.sessionId,
     sessionFile.projectSlug,
+    sessionFile.subagentPaths,
   );
 
   const grade = gradeSession(session);

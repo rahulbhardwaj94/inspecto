@@ -30,6 +30,7 @@ const METRIC_DISPLAY_NAMES: Record<string, string> = {
   "retry-density": "Retry density",
   "tool-diversity": "Tool diversity",
   "tokens-per-edit": "Tokens/useful-edit",
+  "subagent-overhead": "Subagent delegation",
 };
 
 export function renderAuditReport(session: Session, grade: GradeResult): string {
@@ -39,11 +40,16 @@ export function renderAuditReport(session: Session, grade: GradeResult): string 
   lines.push(chalk.bold("  inspecto v1.0.0") + chalk.dim(" — Claude Code Session Quality Analyzer"));
   lines.push("");
 
+  const agentInfo = session.subagentCount > 0
+    ? `${session.subagentCount} subagents | ${session.turns.length} turns`
+    : `${session.turns.length} turns`;
+
   const sessionInfo = [
     `Session: ${chalk.cyan(shortSessionId(session.id))}`,
     projectNameFromSlug(session.projectSlug),
     formatDuration(session.durationMs),
     session.model,
+    agentInfo,
   ].join(chalk.dim(" | "));
   lines.push(`  ${sessionInfo}`);
   lines.push("");

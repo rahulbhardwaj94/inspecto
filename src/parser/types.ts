@@ -162,6 +162,8 @@ export interface MergedTurn {
   isHumanTurn: boolean;
   /** The model that generated this turn (assistant only). */
   model?: string;
+  /** Subagent ID (e.g. "agent-abc123"). Undefined = main agent. */
+  agentId?: string;
 }
 
 export interface Session {
@@ -174,6 +176,8 @@ export interface Session {
   cwd: string;
   gitBranch: string | null;
   durationMs: number;
+  subagentCount: number;
+  subagentTurnCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,4 +209,5 @@ export interface SessionFile {
   sessionId: string;
   projectSlug: string;
   mtime: Date;
+  subagentPaths?: string[];
 }

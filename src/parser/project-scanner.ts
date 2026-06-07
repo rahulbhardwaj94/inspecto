@@ -61,11 +61,25 @@ export async function scanSessions(options?: {
               try {
                 const fileStat = await stat(filePath);
                 if (options?.since && fileStat.mtime < options.since) return null;
+
+                let subagentPaths: string[] | undefined;
+                try {
+                  const subagentDir = join(fullProjectDir, sessionId, "subagents");
+                  const agentFiles = await readdir(subagentDir);
+                  const paths = agentFiles
+                    .filter((f) => f.startsWith("agent-") && f.endsWith(".jsonl"))
+                    .map((f) => join(subagentDir, f));
+                  if (paths.length > 0) subagentPaths = paths;
+                } catch {
+                  // No subagents directory — normal for older sessions
+                }
+
                 return {
                   path: filePath,
                   sessionId,
                   projectSlug: projectDir,
                   mtime: fileStat.mtime,
+                  subagentPaths,
                 } as SessionFile;
               } catch {
                 return null;
