@@ -29,7 +29,7 @@
   "author": "Rahul Bhardwaj",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "files": [
     "dist"

@@ -6,10 +6,12 @@
  */
 
 import { Command } from "commander";
+import { unlink } from "node:fs/promises";
 import { runAudit } from "./commands/audit.js";
 import { runTrend } from "./commands/trend.js";
 import { runCacheCheck } from "./commands/cache-check.js";
 import { runCompare } from "./commands/compare.js";
+import { getCacheFilePath } from "./utils/paths.js";
 
 const program = new Command();
 
@@ -72,6 +74,31 @@ program
   .action(async (options) => {
     try {
       await runCompare(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+const cache = program
+  .command("cache")
+  .description("Manage the inspecto grade cache");
+
+cache
+  .command("clear")
+  .description("Delete the grade cache file (~/.claude/inspecto-cache.db)")
+  .action(async () => {
+    try {
+      const cachePath = getCacheFilePath();
+      try {
+        await unlink(cachePath);
+        console.log(`Cache cleared: ${cachePath}`);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          console.log("No cache file found.");
+        } else {
+          throw err;
+        }
+      }
     } catch (error) {
       handleError(error);
     }

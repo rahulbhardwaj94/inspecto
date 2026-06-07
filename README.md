@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/inspecto)](https://www.npmjs.com/package/inspecto)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+[![Node.js >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
@@ -44,7 +44,7 @@ Or run without installing:
 npx inspecto
 ```
 
-Requires Node.js >= 18. Works on macOS, Linux, and Windows.
+Requires Node.js >= 22 (uses the built-in `node:sqlite` module). Works on macOS, Linux, and Windows.
 
 ---
 
@@ -94,6 +94,14 @@ On March 31, 2026, the leaked Claude Code source revealed two cache bugs that si
 
 ```bash
 npx inspecto compare --projects my-app,api-gateway,shared-lib
+```
+
+### Manage the grade cache
+
+`inspecto trend` and `inspecto compare` cache computed grade results in `~/.claude/inspecto-cache.db` so re-runs over the same sessions are near-instant. The cache is keyed by file path + mtime, so it invalidates automatically when Claude Code writes new data to a session.
+
+```bash
+npx inspecto cache clear   # delete the cache file (~/.claude/inspecto-cache.db)
 ```
 
 ### Global options
@@ -184,7 +192,8 @@ src/
 ├── anomaly/       # Baseline computation + regression detection + cache anomaly
 ├── reporter/      # Terminal (chalk + cli-table3) and JSON output modes
 ├── commands/      # audit, trend, cache-check, compare
-└── utils/         # Levenshtein, paths, duration parsing, formatting
+├── cache/         # SQLite grade-result cache (node:sqlite, ~/.claude/inspecto-cache.db)
+└── utils/         # Levenshtein, paths, duration parsing, formatting, concurrency helper
 ```
 
 Key technical details:
@@ -192,6 +201,8 @@ Key technical details:
 - **Chunk deduplication**: Assistant responses come as multiple JSONL records sharing `message.id`; content blocks are merged and only the final chunk's `output_tokens` is used
 - **No external APIs**: All analysis is local. No network calls. Works offline
 - **Real token cost**: `input_tokens` is always a streaming placeholder — actual input = `cache_read_input_tokens + cache_creation_input_tokens`
+- **Concurrency**: `trend` and `compare` parse up to 16 session files in parallel (semaphore-limited) so large histories don't block
+- **Grade cache**: computed `GradeResult` objects are persisted in `~/.claude/inspecto-cache.db` (SQLite via `node:sqlite`). Cache key = `sha256(path:mtime)`. Re-runs over unchanged sessions skip parsing entirely — typically 2–3× faster
 
 ---
 

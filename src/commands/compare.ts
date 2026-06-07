@@ -7,10 +7,13 @@ import { scanSessions } from "../parser/project-scanner.js";
 import { readJsonl } from "../parser/jsonl-reader.js";
 import { buildSession } from "../parser/session-builder.js";
 import { gradeSession } from "../metrics/grader.js";
+import { concurrentSettled } from "../utils/concurrent.js";
+import { getCachedGrade, setCachedGrade } from "../cache/grade-cache.js";
 import chalk from "chalk";
 import Table from "cli-table3";
-import type { GradeResult } from "../parser/types.js";
-import { projectNameFromSlug } from "../utils/format.js";
+import type { GradeResult, SessionFile } from "../parser/types.js";
+
+const CONCURRENCY = 16;
 
 export interface CompareOptions {
   projects: string;
@@ -40,13 +43,25 @@ export async function runCompare(options: CompareOptions): Promise<void> {
 
       if (sessionFiles.length === 0) return null;
 
-      const settled = await Promise.allSettled(
-        sessionFiles.map(async (sf) => {
+      const settled = await concurrentSettled(
+        sessionFiles,
+        CONCURRENCY,
+        async (sf: SessionFile) => {
+          const cached = getCachedGrade(sf.path, sf.mtime);
+          if (cached) return cached;
           const records = readJsonl(sf.path);
-          const session = await buildSession(records, sf.sessionId, sf.projectSlug, sf.subagentPaths);
-          return gradeSession(session);
-        }),
+          const session = await buildSession(
+            records,
+            sf.sessionId,
+            sf.projectSlug,
+            sf.subagentPaths,
+          );
+          const grade = gradeSession(session);
+          setCachedGrade(sf.path, sf.mtime, grade);
+          return grade;
+        },
       );
+
       const grades: GradeResult[] = settled
         .filter((r): r is PromiseFulfilledResult<GradeResult> => r.status === "fulfilled")
         .map((r) => r.value);

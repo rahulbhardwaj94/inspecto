@@ -13,3 +13,7 @@ import { homedir } from "node:os";
 export function getClaudeDir(): string {
   return join(homedir(), ".claude");
 }
+
+export function getCacheFilePath(): string {
+  return join(getClaudeDir(), "inspecto-cache.db");
+}

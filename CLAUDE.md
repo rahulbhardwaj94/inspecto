@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run build        # Compile TypeScript → dist/ via tsup (ESM, Node 18 target)
+npm run build        # Compile TypeScript → dist/ via tsup (ESM, Node 22 target)
 npm run dev          # Run src/index.ts directly via tsx (no build required)
 npm run test         # Run Vitest suite once
 npm run test:watch   # Run Vitest in watch mode
@@ -27,11 +27,15 @@ cc-audit grades Claude Code sessions by streaming their local JSONL logs and com
 
 ```
 JSONL file (streaming)
+  → getCachedGrade()     [src/cache/grade-cache.ts]     — SQLite lookup by sha256(path:mtime); skip below on hit
   → readJsonl()          [src/parser/jsonl-reader.ts]   — AsyncGenerator, never loads full file
   → buildSession()       [src/parser/session-builder.ts] — merges streaming chunks by message.id
   → gradeSession()       [src/metrics/grader.ts]        — runs all 7 metrics, computes weighted score
+  → setCachedGrade()     [src/cache/grade-cache.ts]     — persist result for next run
   → render*Report()      [src/reporter/terminal.ts]     — chalk + cli-table3 output
 ```
+
+`trend` and `compare` run up to 16 of these pipelines concurrently via `concurrentSettled()` in `src/utils/concurrent.ts`.
 
 ### Key implementation details
 
@@ -59,10 +63,11 @@ All metrics are pure functions of a `Session` object. To add a new metric: imple
 
 ### Module responsibilities
 
-- **`src/commands/`** — CLI command handlers (`audit`, `trend`, `cache-check`, `compare`). Each orchestrates: scan → parse → grade → report.
+- **`src/commands/`** — CLI command handlers (`audit`, `trend`, `cache-check`, `compare`). Each orchestrates: scan → parse → grade → report. `audit` always recomputes; `trend` and `compare` use the grade cache.
+- **`src/cache/`** — `grade-cache.ts`: lazy-initialized SQLite DB at `~/.claude/inspecto-cache.db` (via `node:sqlite`, Node 22+). Cache key = `sha256(sessionPath:mtime)`. All reads/writes are wrapped in try/catch — failures log to stderr and are silently skipped so the command always completes.
 - **`src/anomaly/`** — Multi-session analysis: `baseline.ts` computes rolling averages, `regression-detector.ts` flags >30% degradation, `cache-anomaly.ts` flags sessions with <5% cache hit rate.
 - **`src/reporter/`** — Terminal rendering (`terminal.ts`) and structured JSON output (`json-reporter.ts`). `tips.ts` maps metric statuses to context-sensitive improvement messages.
-- **`src/utils/`** — `paths.ts` (cross-platform `~/.claude` resolution), `duration.ts` (parses `7d`/`14d`/`30d`), `levenshtein.ts` (retry detection), `format.ts` (display helpers).
+- **`src/utils/`** — `paths.ts` (cross-platform `~/.claude` resolution + `getCacheFilePath()`), `duration.ts` (parses `7d`/`14d`/`30d`), `levenshtein.ts` (retry detection), `format.ts` (display helpers), `concurrent.ts` (semaphore-based `concurrentSettled`, max 16 in-flight).
 
 ### Build output
 
