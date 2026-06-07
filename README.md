@@ -6,9 +6,7 @@
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
-> CLI to grade Claude Code sessions — 750+ weekly downloads in first week.
-
-
+> CLI to grade Claude Code sessions — 915+ total downloads. v1.1.0 is out with 5 new metrics, watch mode, per-project config, a grade cache, and CI exit codes.
 
 > AMD's AI director manually analyzed 7,000 Claude Code sessions to prove it got worse.
 > `inspecto` automates that analysis for every developer.
@@ -29,6 +27,74 @@ The others answer *"how much did I spend?"*
 
 <img width="427" height="338" alt="Screenshot 2026-04-11 at 6 00 37 PM" src="https://github.com/user-attachments/assets/81777511-dd45-4ae0-8382-8e008dd98a7a" />
 
+---
+
+## What's New in v1.1.0
+
+900 downloads in. Thank you. Here's everything that shipped.
+
+### 5 new quality metrics — 7 → 12
+
+| # | Metric | What it measures |
+|---|---|---|
+| **M8** | Subagent overhead | Whether Claude is delegating work to subagents efficiently — and whether those subagents are doing meaningful work |
+| **M9** | Tool error rate | How often Claude's tool calls return errors. High rates mean Claude is calling tools with bad arguments or on paths that don't exist |
+| **M10** | Thinking utilization | Whether extended thinking is actually being used on turns that warrant it. Low utilization on complex sessions often predicts high retry density |
+| **M11** | MCP usage | Informational count of MCP tool calls (web search, web fetch, custom servers) per session |
+| **M12** | Session cost | Estimated USD cost from real token usage — output, cache creation, and cache reads, priced at current Sonnet rates |
+
+All 12 metrics are pure functions of your local session files. No data leaves your machine.
+
+### Watch mode
+
+```bash
+npx inspecto watch
+```
+
+Streams live metric updates as Claude Code writes to the active session. Grade updates every time a new assistant turn lands. Hit Ctrl-C to exit.
+
+### Per-project config
+
+Drop `.inspecto.json` in your repo root to override thresholds and weights for your team:
+
+```json
+{
+  "thresholds": {
+    "tokensPerEdit": { "healthy": 8000, "warning": 15000 },
+    "sessionCost":   { "healthy": 5.00, "warning": 10.00 }
+  },
+  "weights": {
+    "cacheHitRate": 0.20,
+    "taskCompletion": 0.20
+  }
+}
+```
+
+Validate your config at any time:
+
+```bash
+npx inspecto config validate
+```
+
+### 2–3× faster trend and compare
+
+Computed grades are now cached in `~/.claude/inspecto-cache.db` (SQLite via `node:sqlite`). Cache key is `sha256(path:mtime)` — it invalidates automatically when Claude Code appends to a session. Re-runs over unchanged sessions skip parsing entirely. Up to 16 sessions are also parsed in parallel, so a 300-session history finishes in seconds instead of minutes.
+
+### CI exit codes
+
+`audit`, `trend`, and `cache-check` now exit 1 on failures. Drop into any pipeline:
+
+```bash
+npx inspecto trend --since 14d   # exits 1 on any regression
+npx inspecto audit --no-fail     # warns but never blocks
+```
+
+### Other additions
+
+- **`inspecto list`** — discover your projects and sessions before running audit or compare. No more guessing project slugs for `--project`.
+- **CSV export** — `--format csv` on `audit` and `trend` for dashboards, spreadsheets, and log aggregators.
+- **Subagent session aggregation** — inspecto now reads subagent JSONL files (`{sessionId}/subagents/agent-*.jsonl`) and merges them into the parent session. Multi-agent sessions were previously graded with large gaps in tool calls and token usage.
+- **Format version detection** — inspecto now reads the `version` field on every JSONL record and warns when the format differs from what it was built against. Unknown record types are surfaced in the output rather than silently dropped.
 
 ---
 
@@ -57,7 +123,7 @@ npx inspecto
 ```
 
 ```
-  inspecto v1.0.13 — Claude Code Session Quality Analyzer
+  inspecto v1.1.0 — Claude Code Session Quality Analyzer
 
   Session: 31f3f224 | my-app | 47 min | claude-opus-4-6
 
@@ -72,8 +138,22 @@ npx inspecto
   Retry density          0.08     ✓ healthy
   Tool diversity         0.52     ⚠ warning
   Tokens/useful-edit     3,218    ✓ healthy
+  Subagent overhead      0.41     ✓ healthy
+  Tool error rate        0.03     ✓ healthy
+  Thinking utilization   0.44     ✓ healthy
+  MCP usage              7        ✓ healthy
+  Session cost           $1.24    ✓ healthy
   ...
 ```
+
+### Watch a session live
+
+```bash
+npx inspecto watch
+npx inspecto watch --project my-app
+```
+
+Clears and re-renders the full audit report every time Claude Code writes a new turn. Useful during long sessions to catch degradation before it compounds.
 
 ### Detect regressions over time
 
@@ -189,6 +269,7 @@ npx inspecto trend --format csv
 | `--project <name>` | `audit`, `trend`, `compare`, `list` | Filter to a specific project |
 | `--since <duration>` | `trend`, `cache-check` | Time range (e.g., `7d`, `14d`, `30d`) |
 | `--sessions` | `list` | Show sessions view instead of projects view |
+| `--interval <ms>` | `watch` | Polling interval fallback in ms (default: 2000) |
 
 ---
 
@@ -205,9 +286,9 @@ Each metric is a pure function computed from your local session files. No data l
 | **M5** | Retry density | User repeating themselves (proxy for misunderstanding) | ≤ 0.10 |
 | **M6** | Tool diversity | Over-reliance on a narrow set of tools (Shannon entropy) | ≥ 0.60 |
 | **M7** | Tokens per edit | Token cost per productive action | ≤ 5,000 |
-| **M8** | Subagent overhead | Fraction of turns delegated to subagents | < 0.60 |
+| **M8** | Subagent overhead | Fraction of token work delegated to subagents | < 0.60 |
 | **M9** | Tool error rate | Rate of tool calls returning errors | ≤ 5% |
-| **M10** | Thinking utilization | Fraction of turns using extended thinking | ≥ 30% |
+| **M10** | Thinking utilization | Fraction of tool-using turns with extended thinking | ≥ 30% |
 | **M11** | MCP usage | Count of MCP tool turns (informational) | — |
 | **M12** | Session cost | Total estimated session cost | ≤ $2.00 |
 
@@ -226,6 +307,7 @@ Once inspecto shows you where your sessions are degrading, here's how to fix eac
 | **Retry density high** | You're repeating yourself — Claude keeps misunderstanding | You're probably under-specifying. Provide a concrete example of the output you want in the first message. If retries persist across sessions, the root cause is usually a missing `CLAUDE.md` or a context window that's too wide. |
 | **Tool diversity low** | Claude over-relies on a narrow tool set (e.g. only Bash) | Prompt explicitly: *"Use the most specific tool available. Prefer Read over Bash for file reads. Prefer Edit over Write for modifications."* This is also a sign of a degraded model — track it over time with `inspecto trend`. |
 | **Tokens/edit high** | High token burn per productive action | Shorten your context. Close irrelevant files in the IDE, trim `CLAUDE.md` to essentials, and use `--project` to scope sessions to one repo at a time. |
+| **Subagent overhead high** | Subagents doing most of the work but graded separately | Run `inspecto audit` on the root session — it now aggregates subagent turns automatically. If overhead is still high, your orchestration prompts may be spawning agents that duplicate work. |
 | **Tool error rate high** | Claude's tool calls are frequently failing | Usually means Claude is passing bad arguments or calling tools on files that don't exist. Add stricter preconditions in `CLAUDE.md`: *"Verify a file exists before reading it. Verify a path before writing."* |
 | **Thinking utilization low** | Extended thinking is rarely being used | For complex tasks, prompt Claude to think before acting: *"Think carefully before making any changes."* Low thinking utilization often correlates with shallow analysis and increased retry density. |
 | **Session cost high** | Spending more than expected per session | Scope sessions narrowly — one task, one repo. Use `--project` to avoid scanning large unrelated projects. Frequent cache misses compound cost; check `cache-check` if cost spiked unexpectedly. |
@@ -236,9 +318,9 @@ Once inspecto shows you where your sessions are degrading, here's how to fix eac
 
 ## How it works
 
-Claude Code writes one JSONL session file per conversation to `~/.claude/projects/{project}/{sessionId}.jsonl`. Each line is a JSON record — user messages, assistant responses (streamed as multiple chunks), tool calls, and tool results.
+Claude Code writes one JSONL session file per conversation to `~/.claude/projects/{project}/{sessionId}.jsonl`. Each line is a JSON record — user messages, assistant responses (streamed as multiple chunks), tool calls, and tool results. Subagent sessions land in `{sessionId}/subagents/agent-*.jsonl`.
 
-`inspecto` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, extracts tool-use patterns and token usage, and computes the 12 metrics above.
+`inspecto` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, aggregates subagent turns into the parent session, extracts tool-use patterns and token usage, and computes the 12 metrics above.
 
 The composite grade is a weighted average mapped to a letter grade from **A+** to **F**. Grades below **D+** (score < 67) trigger a non-zero exit code in CI mode.
 
@@ -246,7 +328,7 @@ The composite grade is a weighted average mapped to a letter grade from **A+** t
 
 ## Why this exists
 
-In the last 30 days before this tool was built:
+In the 30 days before this tool was built:
 
 - **Apr 7, 2026** — A Reddit post about Claude Code's declining quality hit 1,060 upvotes
 - **Apr 6, 2026** — AMD's Director of AI filed a GitHub issue with data from 6,852 sessions proving Claude Code reads code 3x less before editing and rewrites entire files 2x more often than before
@@ -272,11 +354,11 @@ Architecture:
 
 ```
 src/
-├── parser/        # Streaming JSONL reader + session builder (merges streaming chunks)
+├── parser/        # Streaming JSONL reader + session builder (merges streaming chunks, aggregates subagents)
 ├── metrics/       # 12 pure-function quality metrics + composite grader
 ├── anomaly/       # Baseline computation + regression detection + cache anomaly
 ├── reporter/      # Terminal (chalk + cli-table3), JSON, and CSV output modes
-├── commands/      # audit, trend, cache-check, compare, list
+├── commands/      # audit, trend, cache-check, compare, list, watch
 ├── cache/         # SQLite grade-result cache (node:sqlite, ~/.claude/inspecto-cache.db)
 ├── config/        # .inspecto.json config loader + per-metric threshold/weight overrides
 └── utils/         # Levenshtein, paths, duration parsing, formatting, concurrency helper
@@ -284,12 +366,14 @@ src/
 
 Key technical details:
 - **Streaming parse**: `readline` + `createReadStream` — never loads full files into memory
-- **Chunk deduplication**: Assistant responses come as multiple JSONL records sharing `message.id`; content blocks are merged and only the final chunk's `output_tokens` is used
-- **No external APIs**: All analysis is local. No network calls. Works offline
+- **Subagent aggregation**: discovers `{sessionId}/subagents/agent-*.jsonl`, tags each turn with `agentId`, and merges into the parent session's turn list
+- **Chunk deduplication**: assistant responses come as multiple JSONL records sharing `message.id`; content blocks are merged and only the final chunk's `output_tokens` is used
+- **No external APIs**: all analysis is local. No network calls. Works offline
 - **Real token cost**: `input_tokens` is always a streaming placeholder — actual input = `cache_read_input_tokens + cache_creation_input_tokens`
 - **Concurrency**: `trend` and `compare` parse up to 16 session files in parallel (semaphore-limited) so large histories don't block
 - **Grade cache**: computed `GradeResult` objects are persisted in `~/.claude/inspecto-cache.db` (SQLite via `node:sqlite`). Cache key = `sha256(path:mtime)`. Re-runs over unchanged sessions skip parsing entirely — typically 2–3× faster
 - **CI exit codes**: `audit` exits 1 on D/F grades, `trend` exits 1 on any regression, `cache-check` exits 1 on any anomaly. All suppressed by `--no-fail`
+- **Format resilience**: reads the `version` field on every JSONL record and warns when the format diverges from the expected version. Unknown record types are surfaced in output rather than silently dropped
 
 ---
 
