@@ -7,8 +7,9 @@
 
 import type { MetricResult, Session, TextBlock } from "../parser/types.js";
 import { normalizedSimilarity } from "../utils/levenshtein.js";
+import type { ThresholdConfig } from "../config/types.js";
 
-export function computeRetryDensity(session: Session): MetricResult {
+export function computeRetryDensity(session: Session, thresholds?: ThresholdConfig): MetricResult {
   // Extract text from human-authored user turns only
   const humanTexts: string[] = [];
   for (const turn of session.turns) {
@@ -41,11 +42,12 @@ export function computeRetryDensity(session: Session): MetricResult {
   }
 
   const density = retries / pairs;
+  const { healthy, warning } = thresholds ?? { healthy: 0.1, warning: 0.25 };
 
   return {
     name: "retry-density",
     value: round(density),
-    status: density <= 0.1 ? "healthy" : density <= 0.25 ? "warning" : "critical",
+    status: density <= healthy ? "healthy" : density <= warning ? "warning" : "critical",
     label: round(density).toString(),
   };
 }

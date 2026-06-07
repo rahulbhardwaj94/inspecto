@@ -7,8 +7,9 @@
  */
 
 import type { MetricResult, Session, ToolUseBlock } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
-export function computeRewriteRatio(session: Session): MetricResult {
+export function computeRewriteRatio(session: Session, thresholds?: ThresholdConfig): MetricResult {
   let writes = 0;
   let edits = 0;
 
@@ -36,11 +37,12 @@ export function computeRewriteRatio(session: Session): MetricResult {
   }
 
   const ratio = writes / total;
+  const { healthy, warning } = thresholds ?? { healthy: 0.25, warning: 0.5 };
 
   return {
     name: "rewrite-ratio",
     value: round(ratio),
-    status: ratio <= 0.25 ? "healthy" : ratio <= 0.5 ? "warning" : "critical",
+    status: ratio <= healthy ? "healthy" : ratio <= warning ? "warning" : "critical",
     label: round(ratio).toString(),
   };
 }

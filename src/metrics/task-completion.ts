@@ -7,6 +7,7 @@
  */
 
 import type { MetricResult, Session, MergedTurn, TextBlock, ToolUseBlock } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
 const INTENT_PATTERNS = [
   /\bI'll now\b/i,
@@ -17,7 +18,7 @@ const INTENT_PATTERNS = [
   /\bI'm going to\b/i,
 ];
 
-export function computeTaskCompletion(session: Session): MetricResult {
+export function computeTaskCompletion(session: Session, thresholds?: ThresholdConfig): MetricResult {
   const assistantTurns = session.turns.filter(
     (t) => t.role === "assistant" && t.complete,
   );
@@ -52,11 +53,12 @@ export function computeTaskCompletion(session: Session): MetricResult {
   }
 
   const rate = 1 - unfulfilledIntents / totalIntents;
+  const { healthy, warning } = thresholds ?? { healthy: 0.9, warning: 0.7 };
 
   return {
     name: "task-completion",
     value: round(rate),
-    status: rate >= 0.9 ? "healthy" : rate >= 0.7 ? "warning" : "critical",
+    status: rate >= healthy ? "healthy" : rate >= warning ? "warning" : "critical",
     label: round(rate).toString(),
   };
 }

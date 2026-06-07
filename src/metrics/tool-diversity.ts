@@ -7,8 +7,9 @@
  */
 
 import type { MetricResult, Session, ToolUseBlock } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
-export function computeToolDiversity(session: Session): MetricResult {
+export function computeToolDiversity(session: Session, thresholds?: ThresholdConfig): MetricResult {
   const toolCounts = new Map<string, number>();
 
   for (const turn of session.turns) {
@@ -51,10 +52,12 @@ export function computeToolDiversity(session: Session): MetricResult {
   const topPercent = Math.round((topTool[1] / totalCalls) * 100);
   const detail = `Most used: ${topTool[0]} (${topPercent}%)`;
 
+  const { healthy, warning } = thresholds ?? { healthy: 0.6, warning: 0.4 };
+
   return {
     name: "tool-diversity",
     value: round(normalized),
-    status: normalized >= 0.6 ? "healthy" : normalized >= 0.4 ? "warning" : "critical",
+    status: normalized >= healthy ? "healthy" : normalized >= warning ? "warning" : "critical",
     label: round(normalized).toString(),
     detail,
   };

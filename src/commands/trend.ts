@@ -13,6 +13,7 @@ import { formatTrendJson } from "../reporter/json-reporter.js";
 import { parseDuration } from "../utils/duration.js";
 import { concurrentSettled } from "../utils/concurrent.js";
 import { getCachedGrade, setCachedGrade } from "../cache/grade-cache.js";
+import { loadConfig } from "../config/loader.js";
 import type { GradeResult, SessionFile } from "../parser/types.js";
 
 const CONCURRENCY = 16;
@@ -25,14 +26,14 @@ export interface TrendOptions {
 }
 
 export async function runTrend(options: TrendOptions): Promise<void> {
+  const config = loadConfig();
+  const dataDir = options.dataDir ?? config.dataDir;
+  const project = options.project ?? config.defaultProject;
+
   const duration = options.since ?? "7d";
   const sinceDate = parseDuration(duration);
 
-  const sessionFiles = await scanSessions({
-    dataDir: options.dataDir,
-    project: options.project,
-    since: sinceDate,
-  });
+  const sessionFiles = await scanSessions({ dataDir, project, since: sinceDate });
 
   if (sessionFiles.length === 0) {
     console.log(`No sessions found in the last ${duration}.`);
@@ -44,7 +45,7 @@ export async function runTrend(options: TrendOptions): Promise<void> {
     if (cached) return cached;
     const records = readJsonl(sf.path);
     const session = await buildSession(records, sf.sessionId, sf.projectSlug, sf.subagentPaths);
-    const grade = gradeSession(session);
+    const grade = gradeSession(session, config);
     setCachedGrade(sf.path, sf.mtime, grade);
     return grade;
   });

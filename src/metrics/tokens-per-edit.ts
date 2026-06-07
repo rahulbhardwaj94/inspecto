@@ -7,10 +7,11 @@
  */
 
 import type { MetricResult, Session, ToolUseBlock } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
 const EDIT_TOOLS = new Set(["Write", "Edit", "NotebookEdit"]);
 
-export function computeTokensPerEdit(session: Session): MetricResult {
+export function computeTokensPerEdit(session: Session, thresholds?: ThresholdConfig): MetricResult {
   let totalOutputTokens = 0;
   let editCount = 0;
 
@@ -41,11 +42,12 @@ export function computeTokensPerEdit(session: Session): MetricResult {
   }
 
   const ratio = totalOutputTokens / editCount;
+  const { healthy, warning } = thresholds ?? { healthy: 5000, warning: 15000 };
 
   return {
     name: "tokens-per-edit",
     value: Math.round(ratio),
-    status: ratio <= 5000 ? "healthy" : ratio <= 15000 ? "warning" : "critical",
+    status: ratio <= healthy ? "healthy" : ratio <= warning ? "warning" : "critical",
     label: Math.round(ratio).toLocaleString("en-US"),
   };
 }

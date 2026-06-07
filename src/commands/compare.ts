@@ -9,6 +9,7 @@ import { buildSession } from "../parser/session-builder.js";
 import { gradeSession, gradeLetterFromScore } from "../metrics/grader.js";
 import { concurrentSettled } from "../utils/concurrent.js";
 import { getCachedGrade, setCachedGrade } from "../cache/grade-cache.js";
+import { loadConfig } from "../config/loader.js";
 import chalk from "chalk";
 import Table from "cli-table3";
 import type { GradeResult, SessionFile } from "../parser/types.js";
@@ -31,15 +32,15 @@ interface ProjectSummary {
 }
 
 export async function runCompare(options: CompareOptions): Promise<void> {
+  const config = loadConfig();
+  const dataDir = options.dataDir ?? config.dataDir;
+
   const projectNames = options.projects.split(",").map((p) => p.trim());
   const summaries: ProjectSummary[] = [];
 
   const projectSummaries = await Promise.all(
     projectNames.map(async (projectFilter) => {
-      const sessionFiles = await scanSessions({
-        dataDir: options.dataDir,
-        project: projectFilter,
-      });
+      const sessionFiles = await scanSessions({ dataDir, project: projectFilter });
 
       if (sessionFiles.length === 0) return null;
 
@@ -56,7 +57,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
             sf.projectSlug,
             sf.subagentPaths,
           );
-          const grade = gradeSession(session);
+          const grade = gradeSession(session, config);
           setCachedGrade(sf.path, sf.mtime, grade);
           return grade;
         },

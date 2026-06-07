@@ -9,6 +9,7 @@ import { buildSession } from "../parser/session-builder.js";
 import { gradeSession } from "../metrics/grader.js";
 import { renderAuditReport } from "../reporter/terminal.js";
 import { formatAuditJson } from "../reporter/json-reporter.js";
+import { loadConfig } from "../config/loader.js";
 
 const KNOWN_FORMAT_VERSION = "2.1.167";
 
@@ -20,10 +21,13 @@ export interface AuditOptions {
 }
 
 export async function runAudit(options: AuditOptions): Promise<void> {
-  const sessionFile = await getMostRecentSession({
-    dataDir: options.dataDir,
-    project: options.project,
-  });
+  const config = loadConfig();
+
+  // CLI flags take precedence over config file, config file takes precedence over defaults
+  const dataDir = options.dataDir ?? config.dataDir;
+  const project = options.project ?? config.defaultProject;
+
+  const sessionFile = await getMostRecentSession({ dataDir, project });
 
   const records = readJsonl(sessionFile.path);
   const session = await buildSession(
@@ -33,7 +37,7 @@ export async function runAudit(options: AuditOptions): Promise<void> {
     sessionFile.subagentPaths,
   );
 
-  const grade = gradeSession(session);
+  const grade = gradeSession(session, config);
 
   if (options.json) {
     console.log(formatAuditJson(session, grade));

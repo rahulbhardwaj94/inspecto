@@ -11,6 +11,7 @@ import { runAudit } from "./commands/audit.js";
 import { runTrend } from "./commands/trend.js";
 import { runCacheCheck } from "./commands/cache-check.js";
 import { runCompare } from "./commands/compare.js";
+import { runConfigValidate } from "./commands/config-validate.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -75,6 +76,21 @@ program
   .action(async (options) => {
     try {
       await runCompare(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+const config = program
+  .command("config")
+  .description("Manage inspecto configuration");
+
+config
+  .command("validate")
+  .description("Show effective configuration merged from .inspecto.json and defaults")
+  .action(async () => {
+    try {
+      await runConfigValidate();
     } catch (error) {
       handleError(error);
     }

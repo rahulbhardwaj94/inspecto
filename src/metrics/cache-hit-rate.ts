@@ -10,8 +10,9 @@
  */
 
 import type { MetricResult, Session } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
-export function computeCacheHitRate(session: Session): MetricResult {
+export function computeCacheHitRate(session: Session, thresholds?: ThresholdConfig): MetricResult {
   let totalCacheRead = 0;
   let totalCacheCreation = 0;
 
@@ -34,11 +35,12 @@ export function computeCacheHitRate(session: Session): MetricResult {
   }
 
   const rate = totalCacheRead / totalInput;
+  const { healthy, warning } = thresholds ?? { healthy: 0.5, warning: 0.2 };
 
   return {
     name: "cache-hit-rate",
     value: round(rate),
-    status: rate >= 0.5 ? "healthy" : rate >= 0.2 ? "warning" : "critical",
+    status: rate >= healthy ? "healthy" : rate >= warning ? "warning" : "critical",
     label: round(rate).toString(),
   };
 }

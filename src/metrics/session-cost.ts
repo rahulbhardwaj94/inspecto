@@ -1,4 +1,5 @@
 import type { MetricResult, Session } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
 // Pricing per 1M tokens (Claude Sonnet 4.5/4.6)
 const PRICE_PER_M = {
@@ -8,7 +9,7 @@ const PRICE_PER_M = {
   input: 3.0,
 };
 
-export function computeSessionCost(session: Session): MetricResult {
+export function computeSessionCost(session: Session, thresholds?: ThresholdConfig): MetricResult {
   let outputTokens = 0;
   let cacheCreationTokens = 0;
   let cacheReadTokens = 0;
@@ -37,10 +38,12 @@ export function computeSessionCost(session: Session): MetricResult {
       cacheReadTokens * PRICE_PER_M.cacheRead) /
     1_000_000;
 
+  const { healthy, warning } = thresholds ?? { healthy: 2.0, warning: 5.0 };
+
   return {
     name: "session-cost",
     value: round(cost),
-    status: cost <= 2.0 ? "healthy" : cost <= 5.0 ? "warning" : "critical",
+    status: cost <= healthy ? "healthy" : cost <= warning ? "warning" : "critical",
     label: `$${cost.toFixed(2)}`,
   };
 }

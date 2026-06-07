@@ -7,11 +7,12 @@
  */
 
 import type { MetricResult, Session, ToolUseBlock } from "../parser/types.js";
+import type { ThresholdConfig } from "../config/types.js";
 
 const EDIT_TOOLS = new Set(["Write", "Edit", "NotebookEdit"]);
 const READ_TOOL = "Read";
 
-export function computeReadsPerEdit(session: Session): MetricResult {
+export function computeReadsPerEdit(session: Session, thresholds?: ThresholdConfig): MetricResult {
   let readsSinceLastEdit = 0;
   const ratios: number[] = [];
 
@@ -42,11 +43,12 @@ export function computeReadsPerEdit(session: Session): MetricResult {
   }
 
   const average = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  const { healthy, warning } = thresholds ?? { healthy: 4.0, warning: 2.0 };
 
   return {
     name: "reads-per-edit",
     value: round(average),
-    status: average >= 4.0 ? "healthy" : average >= 2.0 ? "warning" : "critical",
+    status: average >= healthy ? "healthy" : average >= warning ? "warning" : "critical",
     label: round(average).toString(),
   };
 }
