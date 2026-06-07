@@ -40,43 +40,43 @@ export async function scanSessions(options?: {
     );
   }
 
-  const sessions: SessionFile[] = [];
+  const projectResults = await Promise.all(
+    projectDirs
+      .filter((dir) => !dir.startsWith("."))
+      .map(async (projectDir) => {
+        const fullProjectDir = join(projectsDir, projectDir);
+        let entries: string[];
+        try {
+          entries = await readdir(fullProjectDir);
+        } catch {
+          return [] as SessionFile[];
+        }
 
-  for (const projectDir of projectDirs) {
-    // Skip hidden directories
-    if (projectDir.startsWith(".")) continue;
+        const fileResults = await Promise.all(
+          entries
+            .filter((entry) => extname(entry) === ".jsonl")
+            .map(async (entry) => {
+              const filePath = join(fullProjectDir, entry);
+              const sessionId = basename(entry, ".jsonl");
+              try {
+                const fileStat = await stat(filePath);
+                if (options?.since && fileStat.mtime < options.since) return null;
+                return {
+                  path: filePath,
+                  sessionId,
+                  projectSlug: projectDir,
+                  mtime: fileStat.mtime,
+                } as SessionFile;
+              } catch {
+                return null;
+              }
+            }),
+        );
+        return fileResults.filter((f): f is SessionFile => f !== null);
+      }),
+  );
 
-    const fullProjectDir = join(projectsDir, projectDir);
-    let entries: string[];
-    try {
-      entries = await readdir(fullProjectDir);
-    } catch {
-      continue;
-    }
-
-    for (const entry of entries) {
-      if (extname(entry) !== ".jsonl") continue;
-
-      const filePath = join(fullProjectDir, entry);
-      const sessionId = basename(entry, ".jsonl");
-
-      try {
-        const fileStat = await stat(filePath);
-
-        // Filter by date if requested
-        if (options?.since && fileStat.mtime < options.since) continue;
-
-        sessions.push({
-          path: filePath,
-          sessionId,
-          projectSlug: projectDir,
-          mtime: fileStat.mtime,
-        });
-      } catch {
-        continue;
-      }
-    }
-  }
+  const sessions: SessionFile[] = projectResults.flat();
 
   // Sort most recent first
   sessions.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());

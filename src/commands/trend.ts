@@ -35,16 +35,16 @@ export async function runTrend(options: TrendOptions): Promise<void> {
     return;
   }
 
-  const grades: GradeResult[] = [];
-  for (const sf of sessionFiles) {
-    try {
+  const settled = await Promise.allSettled(
+    sessionFiles.map(async (sf) => {
       const records = readJsonl(sf.path);
       const session = await buildSession(records, sf.sessionId, sf.projectSlug);
-      grades.push(gradeSession(session));
-    } catch {
-      // Skip sessions that fail to parse
-    }
-  }
+      return gradeSession(session);
+    }),
+  );
+  const grades: GradeResult[] = settled
+    .filter((r): r is PromiseFulfilledResult<GradeResult> => r.status === "fulfilled")
+    .map((r) => r.value);
 
   if (grades.length === 0) {
     console.log("No valid sessions found to analyze.");

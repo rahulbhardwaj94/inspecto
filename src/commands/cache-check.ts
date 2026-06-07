@@ -32,16 +32,16 @@ export async function runCacheCheck(options: CacheCheckOptions): Promise<void> {
     return;
   }
 
-  const results: CacheCheckResult[] = [];
-  for (const sf of sessionFiles) {
-    try {
+  const settled = await Promise.allSettled(
+    sessionFiles.map(async (sf) => {
       const records = readJsonl(sf.path);
       const session = await buildSession(records, sf.sessionId, sf.projectSlug);
-      results.push(checkCacheAnomaly(session));
-    } catch {
-      // Skip sessions that fail to parse
-    }
-  }
+      return checkCacheAnomaly(session);
+    }),
+  );
+  const results: CacheCheckResult[] = settled
+    .filter((r): r is PromiseFulfilledResult<CacheCheckResult> => r.status === "fulfilled")
+    .map((r) => r.value);
 
   if (results.length === 0) {
     console.log("No valid sessions found to analyze.");

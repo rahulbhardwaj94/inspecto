@@ -31,45 +31,51 @@ export async function runCompare(options: CompareOptions): Promise<void> {
   const projectNames = options.projects.split(",").map((p) => p.trim());
   const summaries: ProjectSummary[] = [];
 
-  for (const projectFilter of projectNames) {
-    const sessionFiles = await scanSessions({
-      dataDir: options.dataDir,
-      project: projectFilter,
-    });
+  const projectSummaries = await Promise.all(
+    projectNames.map(async (projectFilter) => {
+      const sessionFiles = await scanSessions({
+        dataDir: options.dataDir,
+        project: projectFilter,
+      });
 
-    if (sessionFiles.length === 0) continue;
+      if (sessionFiles.length === 0) return null;
 
-    const grades: GradeResult[] = [];
-    for (const sf of sessionFiles) {
-      try {
-        const records = readJsonl(sf.path);
-        const session = await buildSession(records, sf.sessionId, sf.projectSlug);
-        grades.push(gradeSession(session));
-      } catch {
-        continue;
+      const settled = await Promise.allSettled(
+        sessionFiles.map(async (sf) => {
+          const records = readJsonl(sf.path);
+          const session = await buildSession(records, sf.sessionId, sf.projectSlug);
+          return gradeSession(session);
+        }),
+      );
+      const grades: GradeResult[] = settled
+        .filter((r): r is PromiseFulfilledResult<GradeResult> => r.status === "fulfilled")
+        .map((r) => r.value);
+
+      if (grades.length === 0) return null;
+
+      const avgScore = grades.reduce((s, g) => s + g.score, 0) / grades.length;
+      const metricAvgs = new Map<string, number>();
+      for (const metric of grades[0].metrics) {
+        const values = grades
+          .map((g) => g.metrics.find((m) => m.name === metric.name)?.value)
+          .filter((v): v is number => v !== null);
+        if (values.length > 0) {
+          metricAvgs.set(metric.name, values.reduce((a, b) => a + b, 0) / values.length);
+        }
       }
-    }
 
-    if (grades.length === 0) continue;
+      return {
+        name: projectFilter,
+        sessionCount: grades.length,
+        avgGrade: Math.round(avgScore),
+        avgLetter: getLetterGrade(avgScore),
+        metrics: metricAvgs,
+      } as ProjectSummary;
+    }),
+  );
 
-    const avgScore = grades.reduce((s, g) => s + g.score, 0) / grades.length;
-    const metricAvgs = new Map<string, number>();
-    for (const metric of grades[0].metrics) {
-      const values = grades
-        .map((g) => g.metrics.find((m) => m.name === metric.name)?.value)
-        .filter((v): v is number => v !== null);
-      if (values.length > 0) {
-        metricAvgs.set(metric.name, values.reduce((a, b) => a + b, 0) / values.length);
-      }
-    }
-
-    summaries.push({
-      name: projectFilter,
-      sessionCount: grades.length,
-      avgGrade: Math.round(avgScore),
-      avgLetter: getLetterGrade(avgScore),
-      metrics: metricAvgs,
-    });
+  for (const s of projectSummaries) {
+    if (s !== null) summaries.push(s);
   }
 
   if (summaries.length === 0) {
