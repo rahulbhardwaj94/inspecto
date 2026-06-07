@@ -12,6 +12,7 @@ import { runTrend } from "./commands/trend.js";
 import { runCacheCheck } from "./commands/cache-check.js";
 import { runCompare } from "./commands/compare.js";
 import { runList } from "./commands/list.js";
+import { runWatch } from "./commands/watch.js";
 import { runConfigValidate } from "./commands/config-validate.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
@@ -97,6 +98,20 @@ program
   .action(async (options) => {
     try {
       await runList(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("watch")
+  .description("Watch the active Claude Code session and update metrics live")
+  .option("--project <name>", "Filter to a specific project")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--interval <ms>", "Polling interval in milliseconds", "2000")
+  .action(async (options) => {
+    try {
+      await runWatch(options);
     } catch (error) {
       handleError(error);
     }
