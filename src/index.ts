@@ -12,13 +12,14 @@ import { runTrend } from "./commands/trend.js";
 import { runCacheCheck } from "./commands/cache-check.js";
 import { runCompare } from "./commands/compare.js";
 import { getCacheFilePath } from "./utils/paths.js";
+import { VERSION } from "./version.js";
 
 const program = new Command();
 
 program
   .name("inspecto")
   .description("Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs")
-  .version("1.0.0");
+  .version(VERSION);
 
 program
   .command("audit", { isDefault: true })

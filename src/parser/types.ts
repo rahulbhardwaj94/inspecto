@@ -178,6 +178,8 @@ export interface Session {
   durationMs: number;
   subagentCount: number;
   subagentTurnCount: number;
+  formatVersion: string;
+  unknownRecordTypes: Set<string>;
 }
 
 // ---------------------------------------------------------------------------

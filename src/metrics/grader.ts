@@ -89,6 +89,10 @@ const GRADE_THRESHOLDS: Array<[number, string]> = [
   [0, "F"],
 ];
 
+export function gradeLetterFromScore(score: number): string {
+  return GRADE_THRESHOLDS.find(([threshold]) => score >= threshold)?.[1] ?? "F";
+}
+
 export function gradeSession(session: Session): GradeResult {
   const metrics: MetricResult[] = [];
   let weightedSum = 0;
@@ -107,8 +111,7 @@ export function gradeSession(session: Session): GradeResult {
   // Normalize if some metrics returned null (insufficient data)
   const compositeScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
-  const letter =
-    GRADE_THRESHOLDS.find(([threshold]) => compositeScore >= threshold)?.[1] ?? "F";
+  const letter = gradeLetterFromScore(compositeScore);
 
   return {
     letter,

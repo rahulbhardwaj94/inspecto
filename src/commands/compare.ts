@@ -6,7 +6,7 @@
 import { scanSessions } from "../parser/project-scanner.js";
 import { readJsonl } from "../parser/jsonl-reader.js";
 import { buildSession } from "../parser/session-builder.js";
-import { gradeSession } from "../metrics/grader.js";
+import { gradeSession, gradeLetterFromScore } from "../metrics/grader.js";
 import { concurrentSettled } from "../utils/concurrent.js";
 import { getCachedGrade, setCachedGrade } from "../cache/grade-cache.js";
 import chalk from "chalk";
@@ -83,7 +83,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
         name: projectFilter,
         sessionCount: grades.length,
         avgGrade: Math.round(avgScore),
-        avgLetter: getLetterGrade(avgScore),
+        avgLetter: gradeLetterFromScore(avgScore),
         metrics: metricAvgs,
       } as ProjectSummary;
     }),
@@ -147,18 +147,3 @@ export async function runCompare(options: CompareOptions): Promise<void> {
   console.log(lines.join("\n"));
 }
 
-function getLetterGrade(score: number): string {
-  if (score >= 97) return "A+";
-  if (score >= 93) return "A";
-  if (score >= 90) return "A-";
-  if (score >= 87) return "B+";
-  if (score >= 83) return "B";
-  if (score >= 80) return "B-";
-  if (score >= 77) return "C+";
-  if (score >= 73) return "C";
-  if (score >= 70) return "C-";
-  if (score >= 67) return "D+";
-  if (score >= 63) return "D";
-  if (score >= 60) return "D-";
-  return "F";
-}

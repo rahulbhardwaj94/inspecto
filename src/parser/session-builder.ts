@@ -10,6 +10,7 @@
 
 import { basename } from "node:path";
 import { readJsonl } from "./jsonl-reader.js";
+import { SKIP_TYPES } from "./types.js";
 import type {
   AssistantRecord,
   ContentBlock,
@@ -42,12 +43,14 @@ export async function buildSession(
   subagentPaths?: string[],
 ): Promise<Session> {
   const turns: MergedTurn[] = [];
+  const unknownRecordTypes = new Set<string>();
 
   let cwd = "";
   let gitBranch: string | null = null;
   let model = "";
   let firstTimestamp = "";
   let lastTimestamp = "";
+  let formatVersion = "";
 
   async function processRecords(
     stream: AsyncIterable<RawRecord>,
@@ -56,7 +59,11 @@ export async function buildSession(
     const assistantChunks = new Map<string, AssistantAccumulator>();
 
     for await (const record of stream) {
-      if (isSkippable(record.type)) continue;
+      if (!formatVersion && "version" in record && typeof record.version === "string") {
+        formatVersion = record.version;
+      }
+
+      if (SKIP_TYPES.has(record.type)) continue;
 
       if (record.type === "user") {
         const userRecord = record as UserRecord;
@@ -68,6 +75,8 @@ export async function buildSession(
         if (assistantRecord.error) continue;
         handleAssistantChunk(assistantRecord, assistantChunks);
         captureMetadata(assistantRecord);
+      } else {
+        unknownRecordTypes.add(record.type);
       }
     }
 
@@ -116,6 +125,8 @@ export async function buildSession(
         : 0,
     subagentCount: subagentIds.size,
     subagentTurnCount,
+    formatVersion,
+    unknownRecordTypes,
   };
 
   // -- Inner helpers --------------------------------------------------------
@@ -191,15 +202,4 @@ function normalizeContent(content: string | ContentBlock[]): ContentBlock[] {
     return [{ type: "text", text: content }];
   }
   return content;
-}
-
-const SKIPPABLE = new Set([
-  "queue-operation",
-  "attachment",
-  "system",
-  "last-prompt",
-]);
-
-function isSkippable(type: string): boolean {
-  return SKIPPABLE.has(type);
 }

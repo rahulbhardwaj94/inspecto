@@ -9,6 +9,7 @@ import type { RegressionResult } from "../anomaly/regression-detector.js";
 import type { CacheCheckResult } from "../anomaly/cache-anomaly.js";
 import { formatDuration, shortSessionId, projectNameFromSlug, formatNumber } from "../utils/format.js";
 import { getAllTips } from "./tips.js";
+import { VERSION } from "../version.js";
 
 const STATUS_ICONS: Record<string, string> = {
   healthy: chalk.green("✓"),
@@ -37,7 +38,7 @@ export function renderAuditReport(session: Session, grade: GradeResult): string 
   const lines: string[] = [];
 
   lines.push("");
-  lines.push(chalk.bold("  inspecto v1.0.0") + chalk.dim(" — Claude Code Session Quality Analyzer"));
+  lines.push(chalk.bold(`  inspecto v${VERSION}`) + chalk.dim(" — Claude Code Session Quality Analyzer"));
   lines.push("");
 
   const agentInfo = session.subagentCount > 0
