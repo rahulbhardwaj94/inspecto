@@ -1,11 +1,11 @@
 {
   "name": "inspecto",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "inspecto — Claude Code session quality analyzer. Grade sessions, detect regressions, catch cache bugs.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "inspecto": "dist/index.js"
+    "inspecto": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup",
@@ -29,7 +29,7 @@
   "author": "Rahul Bhardwaj",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.5.0"
   },
   "files": [
     "dist"
