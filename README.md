@@ -6,32 +6,13 @@
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
-> CLI to grade Claude Code sessions — 915+ total downloads. v1.1.0 is out with 5 new metrics, watch mode, per-project config, a grade cache, and CI exit codes.
-
-> AMD's AI director manually analyzed 7,000 Claude Code sessions to prove it got worse.
-> `inspecto` automates that analysis for every developer.
-
-| | `ccusage` | `claude-usage` | `Claude-Code-Usage-Monitor` | **`inspecto`** |
-|---|---|---|---|---|
-| Tracks token spend | ✅ | ✅ | ✅ | ✅ |
-| Answers *"how much did I spend?"* | ✅ | ✅ | ✅ | ✅ |
-| Detects quality regressions | ❌ | ❌ | ❌ | **✅** |
-| Grades Claude's behavior | ❌ | ❌ | ❌ | **✅** |
-| Catches silent cache bugs | ❌ | ❌ | ❌ | **✅** |
-| Flags lazy editing patterns | ❌ | ❌ | ❌ | **✅** |
-| Works fully offline, no API key | ✅ | ✅ | ✅ | **✅** |
-
-The others answer *"how much did I spend?"*
-
-`inspecto` answers: **"Is Claude Code getting worse for me — and can I prove it?"**
-
-<img width="427" height="338" alt="Screenshot 2026-04-11 at 6 00 37 PM" src="https://github.com/user-attachments/assets/81777511-dd45-4ae0-8382-8e008dd98a7a" />
+> CLI to grade Claude Code sessions — 915+ total downloads.
 
 ---
 
 ## What's New in v1.1.0
 
-900 downloads in. Thank you. Here's everything that shipped.
+915+ downloads in. Thank you. Here's everything that shipped.
 
 ### 5 new quality metrics — 7 → 12
 
@@ -98,7 +79,73 @@ npx inspecto audit --no-fail     # warns but never blocks
 
 ---
 
-## Install
+## Why I built this
+
+In the 30 days before this tool existed:
+
+- **Apr 7, 2026** — A Reddit post about Claude Code's declining quality hit 1,060 upvotes
+- **Apr 6, 2026** — AMD's Director of AI filed a GitHub issue with data from 6,852 sessions proving Claude Code reads code 3x less before editing and rewrites entire files 2x more often than before
+- **Mar 31, 2026** — Claude Code's source leaked via npm, revealing 2 cache bugs that silently inflate costs 10-20x
+- **Mar 26, 2026** — Users on the $100/mo plan reported burning through limits in 90 minutes instead of 5 hours
+
+AMD's AI director manually analyzed 7,000 sessions to prove it got worse. That shouldn't require manual analysis.
+
+The tools that track token spending tell you *what* you used. `inspecto` tells you *whether it was worth it*.
+
+---
+
+## What it does
+
+`inspecto` reads the JSONL session logs Claude Code already writes to `~/.claude/projects/` and grades every session across 12 quality metrics — no API key, no telemetry, fully offline.
+
+| | `ccusage` | `claude-usage` | `Claude-Code-Usage-Monitor` | **`inspecto`** |
+|---|---|---|---|---|
+| Tracks token spend | ✅ | ✅ | ✅ | ✅ |
+| Answers *"how much did I spend?"* | ✅ | ✅ | ✅ | ✅ |
+| Detects quality regressions | ❌ | ❌ | ❌ | **✅** |
+| Grades Claude's behavior | ❌ | ❌ | ❌ | **✅** |
+| Catches silent cache bugs | ❌ | ❌ | ❌ | **✅** |
+| Flags lazy editing patterns | ❌ | ❌ | ❌ | **✅** |
+| Works fully offline, no API key | ✅ | ✅ | ✅ | **✅** |
+
+The others answer *"how much did I spend?"*
+
+`inspecto` answers: **"Is Claude Code getting worse for me — and can I prove it?"**
+
+<img width="427" height="338" alt="Screenshot 2026-04-11 at 6 00 37 PM" src="https://github.com/user-attachments/assets/81777511-dd45-4ae0-8382-8e008dd98a7a" />
+
+### The 12 quality metrics
+
+Each metric is a pure function computed from your local session files.
+
+| # | Metric | What it detects | Healthy |
+|---|---|---|---|
+| **M1** | Reads-before-edit ratio | Claude editing without reading context first | ≥ 4.0 |
+| **M2** | Rewrite ratio | Full-file rewrites instead of surgical edits | ≤ 0.25 |
+| **M3** | Cache hit rate | Prompt cache bugs inflating token costs | ≥ 0.50 |
+| **M4** | Task completion | "I'll do X" promises without follow-through | ≥ 0.90 |
+| **M5** | Retry density | User repeating themselves (proxy for misunderstanding) | ≤ 0.10 |
+| **M6** | Tool diversity | Over-reliance on a narrow set of tools (Shannon entropy) | ≥ 0.60 |
+| **M7** | Tokens per edit | Token cost per productive action | ≤ 5,000 |
+| **M8** | Subagent overhead | Fraction of token work delegated to subagents | < 0.60 |
+| **M9** | Tool error rate | Rate of tool calls returning errors | ≤ 5% |
+| **M10** | Thinking utilization | Fraction of tool-using turns with extended thinking | ≥ 30% |
+| **M11** | MCP usage | Count of MCP tool turns (informational) | — |
+| **M12** | Session cost | Total estimated session cost | ≤ $2.00 |
+
+### How it works
+
+Claude Code writes one JSONL session file per conversation to `~/.claude/projects/{project}/{sessionId}.jsonl`. Each line is a JSON record — user messages, assistant responses (streamed as multiple chunks), tool calls, and tool results. Subagent sessions land in `{sessionId}/subagents/agent-*.jsonl`.
+
+`inspecto` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, aggregates subagent turns into the parent session, extracts tool-use patterns and token usage, and computes the 12 metrics above.
+
+The composite grade is a weighted average mapped to a letter grade from **A+** to **F**.
+
+---
+
+## How to use it
+
+### Install
 
 ```bash
 npm install -g inspecto
@@ -113,8 +160,6 @@ npx inspecto
 Requires Node.js >= 22 (uses the built-in `node:sqlite` module). Works on macOS, Linux, and Windows.
 
 ---
-
-## Usage
 
 ### Grade your most recent session
 
@@ -204,15 +249,15 @@ npx inspecto compare --projects my-app,api-gateway,shared-lib
 
 ### Manage the grade cache
 
-`inspecto trend` and `inspecto compare` cache computed grade results in `~/.claude/inspecto-cache.db` so re-runs over the same sessions are near-instant. The cache is keyed by file path + mtime, so it invalidates automatically when Claude Code writes new data to a session.
-
 ```bash
 npx inspecto cache clear   # delete the cache file (~/.claude/inspecto-cache.db)
 ```
 
+`inspecto trend` and `inspecto compare` cache computed grades in `~/.claude/inspecto-cache.db`. The cache is keyed by file path + mtime and invalidates automatically when Claude Code writes new data.
+
 ---
 
-## CI integration
+### CI integration
 
 `inspecto` exits with a non-zero code when quality drops below acceptable thresholds:
 
@@ -223,7 +268,7 @@ npx inspecto cache clear   # delete the cache file (~/.claude/inspecto-cache.db)
 | `inspecto cache-check` | Any session has a cache anomaly |
 | `inspecto compare` | Never (comparison is informational) |
 
-Use `--no-fail` on any command to always exit 0 — useful for scripts that want the output without failing the pipeline:
+Use `--no-fail` to always exit 0:
 
 ```bash
 # In a pre-push hook — warn but don't block
@@ -238,9 +283,7 @@ npx inspecto audit --format csv --no-fail >> metrics.csv
 
 ---
 
-## Output formats
-
-All commands default to terminal output with color and tables. For scripting:
+### Output formats
 
 ```bash
 # Structured JSON
@@ -252,13 +295,13 @@ npx inspecto audit --format csv
 npx inspecto trend --format csv
 ```
 
-`audit --format csv` produces one row per metric: `name,value,status,label`
+`audit --format csv` — one row per metric: `name,value,status,label`
 
-`trend --format csv` produces one row per metric: `name,recentAvg,fullAvg,changePercent,status`
+`trend --format csv` — one row per metric: `name,recentAvg,fullAvg,changePercent,status`
 
 ---
 
-## Global options
+### Global options
 
 | Flag | Commands | Description |
 |---|---|---|
@@ -273,30 +316,9 @@ npx inspecto trend --format csv
 
 ---
 
-## The 12 Quality Metrics
+### What to do about it
 
-Each metric is a pure function computed from your local session files. No data leaves your machine.
-
-| # | Metric | What it detects | Healthy |
-|---|---|---|---|
-| **M1** | Reads-before-edit ratio | Claude editing without reading context first | ≥ 4.0 |
-| **M2** | Rewrite ratio | Full-file rewrites instead of surgical edits | ≤ 0.25 |
-| **M3** | Cache hit rate | Prompt cache bugs inflating token costs | ≥ 0.50 |
-| **M4** | Task completion | "I'll do X" promises without follow-through | ≥ 0.90 |
-| **M5** | Retry density | User repeating themselves (proxy for misunderstanding) | ≤ 0.10 |
-| **M6** | Tool diversity | Over-reliance on a narrow set of tools (Shannon entropy) | ≥ 0.60 |
-| **M7** | Tokens per edit | Token cost per productive action | ≤ 5,000 |
-| **M8** | Subagent overhead | Fraction of token work delegated to subagents | < 0.60 |
-| **M9** | Tool error rate | Rate of tool calls returning errors | ≤ 5% |
-| **M10** | Thinking utilization | Fraction of tool-using turns with extended thinking | ≥ 30% |
-| **M11** | MCP usage | Count of MCP tool turns (informational) | — |
-| **M12** | Session cost | Total estimated session cost | ≤ $2.00 |
-
----
-
-## What to do about it
-
-Once inspecto shows you where your sessions are degrading, here's how to fix each metric:
+Once inspecto shows you where sessions are degrading, here's how to fix each metric:
 
 | Metric | Symptom | Fix |
 |---|---|---|
@@ -313,29 +335,6 @@ Once inspecto shows you where your sessions are degrading, here's how to fix eac
 | **Session cost high** | Spending more than expected per session | Scope sessions narrowly — one task, one repo. Use `--project` to avoid scanning large unrelated projects. Frequent cache misses compound cost; check `cache-check` if cost spiked unexpectedly. |
 
 **The single highest-leverage fix:** a well-structured `CLAUDE.md`. It front-loads context so Claude reads less at runtime, forces it to follow project conventions, and survives session restarts without re-explaining yourself.
-
----
-
-## How it works
-
-Claude Code writes one JSONL session file per conversation to `~/.claude/projects/{project}/{sessionId}.jsonl`. Each line is a JSON record — user messages, assistant responses (streamed as multiple chunks), tool calls, and tool results. Subagent sessions land in `{sessionId}/subagents/agent-*.jsonl`.
-
-`inspecto` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, aggregates subagent turns into the parent session, extracts tool-use patterns and token usage, and computes the 12 metrics above.
-
-The composite grade is a weighted average mapped to a letter grade from **A+** to **F**. Grades below **D+** (score < 67) trigger a non-zero exit code in CI mode.
-
----
-
-## Why this exists
-
-In the 30 days before this tool was built:
-
-- **Apr 7, 2026** — A Reddit post about Claude Code's declining quality hit 1,060 upvotes
-- **Apr 6, 2026** — AMD's Director of AI filed a GitHub issue with data from 6,852 sessions proving Claude Code reads code 3x less before editing and rewrites entire files 2x more often than before
-- **Mar 31, 2026** — Claude Code's source leaked via npm, revealing 2 cache bugs that silently inflate costs 10-20x
-- **Mar 26, 2026** — Users on the $100/mo plan reported burning through limits in 90 minutes instead of 5 hours
-
-The tools that track token spending tell you *what* you used. `inspecto` tells you *whether it was worth it*.
 
 ---
 
