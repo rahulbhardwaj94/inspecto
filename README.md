@@ -6,13 +6,13 @@
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
-> CLI to grade Claude Code sessions — 915+ total downloads.
+> CLI to grade Claude Code sessions — 2,591+ total downloads.
 
 ---
 
-## What's New in v1.1.0
+## What's New in v1.1.4
 
-915+ downloads in. Thank you. Here's everything that shipped.
+2,591+ downloads in. Thank you. Here's everything that shipped.
 
 ### 5 new quality metrics — 7 → 12
 
