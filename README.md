@@ -10,6 +10,10 @@
 
 ---
 
+## What's New in v1.1.5
+
+Bug fix: trend analysis no longer misreports improvements as regressions. Metrics where lower is better — `tool-error-rate`, `session-cost`, and `subagent-overhead` — were being flagged as regressions when they *improved* (e.g. a falling error rate showing up as "REGRESSION"). The informational `mcp-usage` metric is also no longer flagged when usage simply drops between windows.
+
 ## What's New in v1.1.4
 
 2,591+ downloads in. Thank you. Here's everything that shipped.

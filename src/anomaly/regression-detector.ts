@@ -22,7 +22,17 @@ const INVERTED_METRICS = new Set([
   "rewrite-ratio",
   "retry-density",
   "tokens-per-edit",
+  "tool-error-rate",
+  "session-cost",
+  "subagent-overhead",
 ]);
+
+/**
+ * Informational metrics that never represent quality. They always score 100
+ * and must never be flagged as a regression regardless of which direction
+ * they move.
+ */
+const INFORMATIONAL_METRICS = new Set(["mcp-usage"]);
 
 /**
  * Detect regressions from baseline averages.
@@ -35,7 +45,7 @@ export function detectRegressions(
   return baselines.map((b) => {
     let status: RegressionStatus = "stable";
 
-    if (b.changePercent !== null) {
+    if (b.changePercent !== null && !INFORMATIONAL_METRICS.has(b.name)) {
       const isInverted = INVERTED_METRICS.has(b.name);
       // For normal metrics, negative change is bad. For inverted, positive change is bad.
       const badDirection = isInverted ? b.changePercent > 0 : b.changePercent < 0;
