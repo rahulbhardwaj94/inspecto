@@ -4,11 +4,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 
-**Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
+**Local Claude Code session diagnostics — inspect patterns, detect regressions, catch cache anomalies.**
 
-> CLI to grade Claude Code sessions — 2,591+ total downloads.
+> 3,211 npm package downloads between April 11 and July 13, 2026.
 
 ---
+
+## What's New in v1.2.0
+
+- **Privacy-safe history export:** `inspecto export --since 30d` produces pseudonymous per-session metrics for a team baseline without prompts, tool inputs/results, paths, branches, source code, user names, or raw session IDs.
+- **Model-aware cost estimates:** uses the model recorded on each turn, distinguishes 5-minute and 1-hour cache writes when available, and supports current Sonnet 5, Opus 4.5+, Haiku 4.5, Fable 5, and Mythos 5 pricing. Verify estimates against Anthropic billing.
+- **Commercial-readiness basics:** an actual MIT license, privacy and security documentation, explicit diagnostic disclaimers, and CI on Node.js 22 and 24.
 
 ## What's New in v1.1.5
 
@@ -16,9 +22,9 @@ Bug fix: trend analysis no longer misreports improvements as regressions. Metric
 
 ## What's New in v1.1.4
 
-2,591+ downloads in. Thank you. Here's everything that shipped.
+Thank you to everyone who has tried the package. Here's what shipped.
 
-### 5 new quality metrics — 7 → 12
+### 5 new diagnostic indicators — 7 → 12
 
 | # | Metric | What it measures |
 |---|---|---|
@@ -26,9 +32,9 @@ Bug fix: trend analysis no longer misreports improvements as regressions. Metric
 | **M9** | Tool error rate | How often Claude's tool calls return errors. High rates mean Claude is calling tools with bad arguments or on paths that don't exist |
 | **M10** | Thinking utilization | Whether extended thinking is actually being used on turns that warrant it. Low utilization on complex sessions often predicts high retry density |
 | **M11** | MCP usage | Informational count of MCP tool calls (web search, web fetch, custom servers) per session |
-| **M12** | Session cost | Estimated USD cost from real token usage — output, cache creation, and cache reads, priced at current Sonnet rates |
+| **M12** | Session cost | Model-aware estimate from recorded token usage and cache duration; Anthropic billing remains the source of truth |
 
-All 12 metrics are pure functions of your local session files. No data leaves your machine.
+All 12 indicators are pure functions of your local session files. No data leaves your machine unless you explicitly export and share the computed output.
 
 ### Watch mode
 
@@ -77,6 +83,7 @@ npx inspecto audit --no-fail     # warns but never blocks
 ### Other additions
 
 - **`inspecto list`** — discover your projects and sessions before running audit or compare. No more guessing project slugs for `--project`.
+- **Metrics-only history export** — `inspecto export --since 30d` produces pseudonymous, per-session metrics without prompts, tool inputs/results, paths, source code, git branches, or raw session IDs.
 - **CSV export** — `--format csv` on `audit` and `trend` for dashboards, spreadsheets, and log aggregators.
 - **Subagent session aggregation** — inspecto now reads subagent JSONL files (`{sessionId}/subagents/agent-*.jsonl`) and merges them into the parent session. Multi-agent sessions were previously graded with large gaps in tool calls and token usage.
 - **Format version detection** — inspecto now reads the `version` field on every JSONL record and warns when the format differs from what it was built against. Unknown record types are surfaced in the output rather than silently dropped.
@@ -85,42 +92,25 @@ npx inspecto audit --no-fail     # warns but never blocks
 
 ## Why I built this
 
-In the 30 days before this tool existed:
+Anthropic's April 23, 2026 [postmortem](https://www.anthropic.com/engineering/april-23-postmortem) confirmed that multiple Claude Code regressions escaped initial internal reproduction. That makes a customer-specific longitudinal baseline useful—but it does not mean one heuristic can prove that a model, developer, or workflow is productive.
 
-- **Apr 7, 2026** — A Reddit post about Claude Code's declining quality hit 1,060 upvotes
-- **Apr 6, 2026** — AMD's Director of AI filed a GitHub issue with data from 6,852 sessions proving Claude Code reads code 3x less before editing and rewrites entire files 2x more often than before
-- **Mar 31, 2026** — Claude Code's source leaked via npm, revealing 2 cache bugs that silently inflate costs 10-20x
-- **Mar 26, 2026** — Users on the $100/mo plan reported burning through limits in 90 minutes instead of 5 hours
-
-AMD's AI director manually analyzed 7,000 sessions to prove it got worse. That shouldn't require manual analysis.
-
-The tools that track token spending tell you *what* you used. `inspecto` tells you *whether it was worth it*.
+Anthropic Analytics should remain your source of truth for official adoption, contribution, value, and billing data. OpenTelemetry is the right choice when you already operate an observability pipeline. Inspecto adds a ready-made, offline session-behavior baseline for teams that want directional signals without deploying a collector or uploading raw sessions.
 
 ---
 
 ## What it does
 
-`inspecto` reads the JSONL session logs Claude Code already writes to `~/.claude/projects/` and grades every session across 12 quality metrics — no API key, no telemetry, fully offline.
+`inspecto` reads the JSONL session logs Claude Code already writes to `~/.claude/projects/` and calculates 12 diagnostic indicators — no API key, no telemetry collector, fully offline.
 
-| | `ccusage` | `claude-usage` | `Claude-Code-Usage-Monitor` | **`inspecto`** |
-|---|---|---|---|---|
-| Tracks token spend | ✅ | ✅ | ✅ | ✅ |
-| Answers *"how much did I spend?"* | ✅ | ✅ | ✅ | ✅ |
-| Detects quality regressions | ❌ | ❌ | ❌ | **✅** |
-| Grades Claude's behavior | ❌ | ❌ | ❌ | **✅** |
-| Catches silent cache bugs | ❌ | ❌ | ❌ | **✅** |
-| Flags lazy editing patterns | ❌ | ❌ | ❌ | **✅** |
-| Works fully offline, no API key | ✅ | ✅ | ✅ | **✅** |
+Use Inspecto to form a testable hypothesis about retries, rewrites, context reads, cache reuse, tool errors, and token patterns. Validate any conclusion against your own delivery, defect, review, and lead-time measures.
 
-The others answer *"how much did I spend?"*
-
-`inspecto` answers: **"Is Claude Code getting worse for me — and can I prove it?"**
+> Inspecto is independent and is not affiliated with, endorsed by, or sponsored by Anthropic. Its indicators and composite grade are heuristic diagnostics, not employee-performance ratings or proof of productivity, code quality, or cost savings.
 
 <img width="427" height="338" alt="Screenshot 2026-04-11 at 6 00 37 PM" src="https://github.com/user-attachments/assets/81777511-dd45-4ae0-8382-8e008dd98a7a" />
 
-### The 12 quality metrics
+### The 12 diagnostic indicators
 
-Each metric is a pure function computed from your local session files.
+Each indicator is a pure function computed from your local session files.
 
 | # | Metric | What it detects | Healthy |
 |---|---|---|---|
@@ -297,11 +287,17 @@ npx inspecto trend --json
 # CSV (RFC 4180)
 npx inspecto audit --format csv
 npx inspecto trend --format csv
+
+# Pseudonymous per-session history for a private team baseline
+npx inspecto export --since 30d > inspecto-metrics.csv
+npx inspecto export --since 30d --format json > inspecto-metrics.json
 ```
 
 `audit --format csv` — one row per metric: `name,value,status,label`
 
 `trend --format csv` — one row per metric: `name,recentAvg,fullAvg,changePercent,status`
+
+`export` — one row per session using generated labels such as `session-001`, `week-1`, and `project-1`. It excludes prompts, tool inputs/results, paths, source code, git branches, user names, and raw session IDs. Review the export before sharing it, just as you would any diagnostic report.
 
 ---
 
@@ -310,11 +306,11 @@ npx inspecto trend --format csv
 | Flag | Commands | Description |
 |---|---|---|
 | `--json` | all | Output structured JSON |
-| `--format <fmt>` | `audit`, `trend` | Output format: `json` or `csv` |
+| `--format <fmt>` | `audit`, `trend`, `export` | Output format: `json` or `csv` |
 | `--no-fail` | `audit`, `trend`, `cache-check`, `compare` | Always exit 0 |
 | `--data-dir <path>` | all | Custom Claude data directory (default: `~/.claude`) |
-| `--project <name>` | `audit`, `trend`, `compare`, `list` | Filter to a specific project |
-| `--since <duration>` | `trend`, `cache-check` | Time range (e.g., `7d`, `14d`, `30d`) |
+| `--project <name>` | `audit`, `trend`, `compare`, `list`, `export` | Filter to a specific project |
+| `--since <duration>` | `trend`, `cache-check`, `export` | Time range (e.g., `7d`, `14d`, `30d`) |
 | `--sessions` | `list` | Show sessions view instead of projects view |
 | `--interval <ms>` | `watch` | Polling interval fallback in ms (default: 2000) |
 
@@ -361,7 +357,7 @@ src/
 ├── metrics/       # 12 pure-function quality metrics + composite grader
 ├── anomaly/       # Baseline computation + regression detection + cache anomaly
 ├── reporter/      # Terminal (chalk + cli-table3), JSON, and CSV output modes
-├── commands/      # audit, trend, cache-check, compare, list, watch
+├── commands/      # audit, trend, export, cache-check, compare, list, watch
 ├── cache/         # SQLite grade-result cache (node:sqlite, ~/.claude/inspecto-cache.db)
 ├── config/        # .inspecto.json config loader + per-metric threshold/weight overrides
 └── utils/         # Levenshtein, paths, duration parsing, formatting, concurrency helper
@@ -372,7 +368,7 @@ Key technical details:
 - **Subagent aggregation**: discovers `{sessionId}/subagents/agent-*.jsonl`, tags each turn with `agentId`, and merges into the parent session's turn list
 - **Chunk deduplication**: assistant responses come as multiple JSONL records sharing `message.id`; content blocks are merged and only the final chunk's `output_tokens` is used
 - **No external APIs**: all analysis is local. No network calls. Works offline
-- **Real token cost**: `input_tokens` is always a streaming placeholder — actual input = `cache_read_input_tokens + cache_creation_input_tokens`
+- **Model-aware cost estimate**: uses the recorded model and 5-minute/1-hour cache-write split when present. Older aggregate-only logs use the 5-minute write rate. Verify estimates against Anthropic billing
 - **Concurrency**: `trend` and `compare` parse up to 16 session files in parallel (semaphore-limited) so large histories don't block
 - **Grade cache**: computed `GradeResult` objects are persisted in `~/.claude/inspecto-cache.db` (SQLite via `node:sqlite`). Cache key = `sha256(path:mtime)`. Re-runs over unchanged sessions skip parsing entirely — typically 2–3× faster
 - **CI exit codes**: `audit` exits 1 on D/F grades, `trend` exits 1 on any regression, `cache-check` exits 1 on any anomaly. All suppressed by `--no-fail`
@@ -380,6 +376,10 @@ Key technical details:
 
 ---
 
-## License
+## Privacy, security, and license
 
-MIT
+- [Privacy](PRIVACY.md)
+- [Security policy](SECURITY.md)
+- [MIT License](LICENSE)
+
+Claude and Claude Code are trademarks of Anthropic PBC. Inspecto is independent and is not affiliated with or endorsed by Anthropic.

@@ -14,6 +14,7 @@ import { runCompare } from "./commands/compare.js";
 import { runList } from "./commands/list.js";
 import { runWatch } from "./commands/watch.js";
 import { runConfigValidate } from "./commands/config-validate.js";
+import { runExportMetrics } from "./commands/export-metrics.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -53,6 +54,24 @@ program
   .action(async (options) => {
     try {
       await runTrend(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("export")
+  .description("Export pseudonymous session metrics for a private team baseline")
+  .option("--since <duration>", "Time range: 7d, 14d, 30d", "30d")
+  .option("--format <format>", "Output format: csv, json", "csv")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      if (!['csv', 'json'].includes(options.format)) {
+        throw new Error('Invalid format. Use "csv" or "json".');
+      }
+      await runExportMetrics(options);
     } catch (error) {
       handleError(error);
     }

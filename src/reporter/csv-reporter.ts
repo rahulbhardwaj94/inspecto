@@ -1,5 +1,6 @@
 import type { GradeResult } from "../parser/types.js";
 import type { RegressionResult } from "../anomaly/regression-detector.js";
+import type { MetricsOnlyRow } from "../commands/export-metrics.js";
 
 function csvEscape(value: string | number | null): string {
   if (value === null) return "";
@@ -29,5 +30,35 @@ export function exportTrendCsv(results: RegressionResult[]): string {
   for (const r of results) {
     lines.push(csvRow([r.name, r.recentAvg, r.fullAvg, r.changePercent, r.status]));
   }
+  return lines.join("\n");
+}
+
+export function exportMetricsOnlyCsv(rows: MetricsOnlyRow[]): string {
+  const metricNames = [...new Set(rows.flatMap((row) => Object.keys(row.metrics)))];
+  const lines: string[] = [];
+  lines.push(csvRow([
+    "schema_version",
+    "session",
+    "period",
+    "project",
+    "model",
+    "grade",
+    "score",
+    ...metricNames,
+  ]));
+
+  for (const row of rows) {
+    lines.push(csvRow([
+      row.schemaVersion,
+      row.session,
+      row.period,
+      row.project,
+      row.model,
+      row.grade,
+      row.score,
+      ...metricNames.map((name) => row.metrics[name] ?? null),
+    ]));
+  }
+
   return lines.join("\n");
 }
