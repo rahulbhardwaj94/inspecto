@@ -14,6 +14,10 @@ import { runCompare } from "./commands/compare.js";
 import { runList } from "./commands/list.js";
 import { runWatch } from "./commands/watch.js";
 import { runConfigValidate } from "./commands/config-validate.js";
+import { runOutcomes } from "./commands/outcomes.js";
+import { runFleet } from "./commands/fleet.js";
+import { runReport } from "./commands/report.js";
+import { runCalibrate } from "./commands/calibrate.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -112,6 +116,72 @@ program
   .action(async (options) => {
     try {
       await runWatch(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("fleet")
+  .description("Show every agent run in the window: project, model, duration, cost, grade")
+  .option("--since <duration>", "Time range: 7d, 14d, 30d", "7d")
+  .option("--limit <n>", "Maximum sessions to show", "50")
+  .option("--json", "Output as JSON")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runFleet(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("outcomes")
+  .description("Link sessions to git commits and measure edit survival and cost per surviving change")
+  .option("--since <duration>", "Time range: 7d, 14d, 30d", "14d")
+  .option("--limit <n>", "Maximum sessions to analyze", "50")
+  .option("--json", "Output as JSON")
+  .option("--format <format>", "Output format: json, csv")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runOutcomes(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("calibrate")
+  .description("Test which quality metrics actually predict outcomes in your own history")
+  .option("--since <duration>", "Time range: 30d, 90d", "90d")
+  .option("--limit <n>", "Maximum sessions to analyze", "200")
+  .option("--json", "Output as JSON")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runCalibrate(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("report")
+  .description("Generate a self-contained HTML report (fleet view, optionally with git outcomes)")
+  .option("--since <duration>", "Time range: 7d, 14d, 30d", "7d")
+  .option("--limit <n>", "Maximum sessions to include", "50")
+  .option("--outcomes", "Include outcome verification (session → git survival)")
+  .option("--out <path>", "Output file path", "inspecto-report.html")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runReport(options);
     } catch (error) {
       handleError(error);
     }

@@ -10,6 +10,7 @@ import { gradeSession } from "../metrics/grader.js";
 import { renderAuditReport } from "../reporter/terminal.js";
 import { formatAuditJson } from "../reporter/json-reporter.js";
 import { exportAuditCsv } from "../reporter/csv-reporter.js";
+import { feedbackCta } from "../reporter/cta.js";
 import { loadConfig } from "../config/loader.js";
 
 const KNOWN_FORMAT_VERSION = "2.1.167";
@@ -62,6 +63,8 @@ export async function runAudit(options: AuditOptions): Promise<void> {
     }
 
     console.log(renderAuditReport(session, grade));
+    const cta = feedbackCta();
+    if (cta) console.log(cta + "\n");
   }
 
   if (options.fail !== false && grade.score < 67) {

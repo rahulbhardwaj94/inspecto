@@ -1,0 +1,209 @@
+/**
+ * Self-contained HTML report: summary cards, grade sparkline, per-project
+ * rollup, fleet table, and (optionally) outcome verification. No external
+ * assets — inline CSS only, light/dark via prefers-color-scheme.
+ */
+
+import { formatDuration, projectNameFromSlug, shortSessionId } from "../utils/format.js";
+import { gradeLetterFromScore } from "../metrics/grader.js";
+import { VERSION } from "../version.js";
+import type { FleetRow } from "../commands/fleet.js";
+import type { OutcomeAggregate, SessionOutcome } from "../outcomes/types.js";
+
+export interface HtmlReportData {
+  since: string;
+  generatedAt: Date;
+  rows: FleetRow[];
+  outcomes?: SessionOutcome[];
+  outcomeAggregate?: OutcomeAggregate;
+}
+
+export function renderHtmlReport(data: HtmlReportData): string {
+  const { rows, since } = data;
+  const totalCost = rows.reduce((s, r) => s + (r.costUsd ?? 0), 0);
+  const avgScore = rows.length
+    ? rows.reduce((s, r) => s + r.grade.score, 0) / rows.length
+    : 0;
+  const agg = data.outcomeAggregate;
+
+  const cards: string[] = [
+    card("Sessions", String(rows.length), `last ${esc(since)}`),
+    card("Total cost", `$${totalCost.toFixed(2)}`, "estimated from token usage"),
+    card(
+      "Average grade",
+      esc(gradeLetterFromScore(avgScore)),
+      `score ${Math.round(avgScore)} / 100`,
+      gradeClass(gradeLetterFromScore(avgScore)),
+    ),
+  ];
+  if (agg?.avgSurvivalRate != null) {
+    cards.push(
+      card(
+        "Edit survival",
+        `${Math.round(agg.avgSurvivalRate * 100)}%`,
+        `${agg.totalLinesSurviving.toLocaleString("en-US")} of ${agg.totalLinesAdded.toLocaleString("en-US")} lines alive at HEAD`,
+        agg.avgSurvivalRate >= 0.7 ? "good" : agg.avgSurvivalRate >= 0.4 ? "warn" : "bad",
+      ),
+    );
+  }
+  if (agg?.costPerSurvivingChange != null) {
+    cards.push(
+      card(
+        "Cost / surviving change",
+        `$${agg.costPerSurvivingChange.toFixed(2)}`,
+        `${agg.totalCommits} linked commits`,
+      ),
+    );
+  }
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>inspecto report — last ${esc(since)}</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a2e; --muted: #6b7280; --line: #e5e7eb;
+    --panel: #f8f9fb; --accent: #4f46e5;
+    --good: #15803d; --warn: #b45309; --bad: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101014; --fg: #e7e7ee; --muted: #9ca3af; --line: #26262e;
+      --panel: #17171d; --accent: #818cf8;
+      --good: #4ade80; --warn: #fbbf24; --bad: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.5rem; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  h2 { font-size: 1.05rem; margin: 2.2rem 0 0.8rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; margin-top: 1.4rem; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; }
+  .card .v { font-size: 1.5rem; font-weight: 650; margin: 0.15rem 0; }
+  .card .k { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card .d { color: var(--muted); font-size: 0.8rem; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: var(--panel); color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .grade { font-weight: 700; }
+  .spark { margin-top: 1.6rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; }
+  .spark svg { width: 100%; height: 64px; display: block; }
+  footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>inspecto <span>· session report · last ${esc(since)}</span></h1>
+  <p class="meta">Generated ${esc(data.generatedAt.toISOString().slice(0, 16).replace("T", " "))} UTC · inspecto v${esc(VERSION)} · all analysis local, no data leaves this machine</p>
+  <div class="cards">${cards.join("")}</div>
+  ${sparkline(rows)}
+  <h2>Projects</h2>
+  ${projectTable(rows)}
+  <h2>Sessions</h2>
+  ${sessionTable(rows)}
+  ${data.outcomes ? outcomeSection(data.outcomes) : ""}
+  <footer>Generated by <strong>inspecto</strong> — Claude Code session quality analyzer.</footer>
+</main>
+</body>
+</html>
+`;
+}
+
+// ---------------------------------------------------------------------------
+
+function card(k: string, v: string, d: string, cls = ""): string {
+  return `<div class="card"><div class="k">${esc(k)}</div><div class="v ${cls}">${v}</div><div class="d">${d}</div></div>`;
+}
+
+function sparkline(rows: FleetRow[]): string {
+  if (rows.length < 2) return "";
+  const ordered = [...rows].sort((a, b) => a.mtime.localeCompare(b.mtime));
+  const w = 600;
+  const h = 60;
+  const pad = 4;
+  const points = ordered
+    .map((r, i) => {
+      const x = pad + (i * (w - 2 * pad)) / (ordered.length - 1);
+      const y = pad + ((100 - r.grade.score) * (h - 2 * pad)) / 100;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return `<div class="spark"><div class="k" style="color:var(--muted);font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em">Grade over time (oldest → newest)</div>
+  <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Grade trend">
+    <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg></div>`;
+}
+
+function projectTable(rows: FleetRow[]): string {
+  const byProject = new Map<string, FleetRow[]>();
+  for (const r of rows) {
+    const list = byProject.get(r.projectSlug) ?? [];
+    list.push(r);
+    byProject.set(r.projectSlug, list);
+  }
+  const trs = [...byProject.entries()]
+    .map(([slug, list]) => {
+      const cost = list.reduce((s, r) => s + (r.costUsd ?? 0), 0);
+      const score = list.reduce((s, r) => s + r.grade.score, 0) / list.length;
+      const letter = gradeLetterFromScore(score);
+      return `<tr><td>${esc(projectNameFromSlug(slug))}</td><td class="num">${list.length}</td><td class="num">$${cost.toFixed(2)}</td><td class="grade ${gradeClass(letter)}">${esc(letter)}</td></tr>`;
+    })
+    .join("");
+  return `<div class="scroll"><table><thead><tr><th>Project</th><th>Sessions</th><th>Cost</th><th>Avg grade</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+}
+
+function sessionTable(rows: FleetRow[]): string {
+  const trs = rows
+    .map(
+      (r) =>
+        `<tr><td>${esc(shortSessionId(r.sessionId))}</td><td>${esc(projectNameFromSlug(r.projectSlug))}</td><td>${esc(shortModel(r.model))}</td><td class="num">${esc(formatDuration(r.durationMs))}</td><td class="num">${r.turnCount}</td><td class="num">${r.subagentCount || "—"}</td><td class="num">${r.costUsd !== null ? `$${r.costUsd.toFixed(2)}` : "—"}</td><td class="grade ${gradeClass(r.grade.letter)}">${esc(r.grade.letter)}</td></tr>`,
+    )
+    .join("");
+  return `<div class="scroll"><table><thead><tr><th>Session</th><th>Project</th><th>Model</th><th>Duration</th><th>Turns</th><th>Agents</th><th>Cost</th><th>Grade</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+}
+
+function outcomeSection(outcomes: SessionOutcome[]): string {
+  const linked = outcomes.filter((o) => o.commits.length > 0);
+  if (linked.length === 0) {
+    return `<h2>Outcomes</h2><p class="meta">No sessions in this window could be linked to git commits.</p>`;
+  }
+  const trs = linked
+    .map((o) => {
+      const rate = o.survivalRate;
+      const cls = rate === null ? "" : rate >= 0.7 ? "good" : rate >= 0.4 ? "warn" : "bad";
+      return `<tr><td>${esc(shortSessionId(o.sessionId))}</td><td>${esc(projectNameFromSlug(o.projectSlug))}</td><td class="num">${o.commits.length}</td><td class="num">${o.linesAdded.toLocaleString("en-US")} → ${o.linesSurviving.toLocaleString("en-US")}</td><td class="num ${cls}">${rate !== null ? `${Math.round(rate * 100)}%` : "—"}</td><td class="num">${o.costUsd !== null ? `$${o.costUsd.toFixed(2)}` : "—"}</td><td class="num">${o.costPerSurvivingChange !== null ? `$${o.costPerSurvivingChange.toFixed(2)}` : "—"}</td></tr>`;
+    })
+    .join("");
+  return `<h2>Outcomes — did the work survive?</h2>
+<div class="scroll"><table><thead><tr><th>Session</th><th>Project</th><th>Commits</th><th>Lines added → surviving</th><th>Survival</th><th>Cost</th><th>$ / change</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+}
+
+function shortModel(model: string): string {
+  return model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+}
+
+function gradeClass(letter: string): string {
+  if (letter.startsWith("A") || letter.startsWith("B")) return "good";
+  if (letter.startsWith("C")) return "warn";
+  return "bad";
+}
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

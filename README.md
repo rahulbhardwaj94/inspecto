@@ -6,7 +6,54 @@
 
 **Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs.**
 
-> CLI to grade Claude Code sessions — 2,591+ total downloads.
+> CLI to grade Claude Code sessions — fully local, no telemetry.
+
+**Using inspecto?** inspecto is local-only by design — it phones no one home, which means the *only* way we learn what to build next is if you tell us. [Open an issue or share how you use it](https://github.com/rahulbhardwaj94/inspecto/issues), or ⭐ the repo if it saved you a token.
+
+---
+
+## What's New in v1.2.0 — Outcome verification
+
+inspecto now answers a question no session grade can: **did the work survive?**
+
+### `inspecto outcomes` — link sessions to git and measure survival
+
+```bash
+npx inspecto outcomes --since 14d
+```
+
+For every session, inspecto finds the commits that carried its work (same repo, commits within the session window + 24h that touch the files the session edited), then uses `git blame` at HEAD to measure how many of those lines are still alive. You get two numbers that exist nowhere else:
+
+- **Edit survival rate** — the fraction of session-authored lines still in your codebase
+- **Cost per surviving change** — session cost divided by the commits that actually landed
+
+All git analysis is local (`git log`, `git show`, `git blame`) — no GitHub API, works offline, and sessions outside a git repo are skipped gracefully.
+
+### `inspecto fleet` — every agent run in one view
+
+```bash
+npx inspecto fleet --since 7d
+```
+
+One table across all projects: session, project, model, duration, turns, subagents, cost, grade — plus total cost and average grade for the window. The morning-after view of everything your agents did.
+
+### `inspecto calibrate` — which metrics actually predict outcomes?
+
+```bash
+npx inspecto calibrate --since 90d
+```
+
+Every quality tool asserts what "good" looks like. inspecto can now **test that claim against your own history**: it correlates each of the 12 metrics with whether the code from those sessions actually survived in git, and labels each one `predictive`, `weak`, `no signal`, or `FALSE ALARM` (fires constantly, predicts nothing).
+
+It also flags metrics that correlate *opposite* to the grader's own assumption, reports `n` everywhere, and withholds a verdict below 8 linked sessions. Correlation isn't causation and survival has a ceiling effect — the output says so.
+
+### `inspecto report` — a shareable HTML report
+
+```bash
+npx inspecto report --since 7d --outcomes
+```
+
+Writes a single self-contained `inspecto-report.html` (no external assets, dark/light aware): summary cards, a grade-over-time sparkline, per-project rollup, the full fleet table, and — with `--outcomes` — the survival analysis. Drop it in Slack or attach it to a retro.
 
 ---
 
@@ -316,6 +363,9 @@ npx inspecto trend --format csv
 | `--project <name>` | `audit`, `trend`, `compare`, `list` | Filter to a specific project |
 | `--since <duration>` | `trend`, `cache-check` | Time range (e.g., `7d`, `14d`, `30d`) |
 | `--sessions` | `list` | Show sessions view instead of projects view |
+| `--limit <n>` | `outcomes`, `fleet`, `report` | Maximum sessions to analyze (default: 50) |
+| `--outcomes` | `report` | Include git outcome verification in the HTML report |
+| `--out <path>` | `report` | Output file path (default: `inspecto-report.html`) |
 | `--interval <ms>` | `watch` | Polling interval fallback in ms (default: 2000) |
 
 ---
@@ -360,8 +410,9 @@ src/
 ├── parser/        # Streaming JSONL reader + session builder (merges streaming chunks, aggregates subagents)
 ├── metrics/       # 12 pure-function quality metrics + composite grader
 ├── anomaly/       # Baseline computation + regression detection + cache anomaly
-├── reporter/      # Terminal (chalk + cli-table3), JSON, and CSV output modes
-├── commands/      # audit, trend, cache-check, compare, list, watch
+├── outcomes/      # Session → git linking + edit survival analysis (log/show/blame)
+├── reporter/      # Terminal (chalk + cli-table3), JSON, CSV, and HTML output modes
+├── commands/      # audit, trend, cache-check, compare, list, watch, outcomes, fleet, report
 ├── cache/         # SQLite grade-result cache (node:sqlite, ~/.claude/inspecto-cache.db)
 ├── config/        # .inspecto.json config loader + per-metric threshold/weight overrides
 └── utils/         # Levenshtein, paths, duration parsing, formatting, concurrency helper

@@ -4,3 +4,7 @@ dist/
 .DS_Store
 .env
 coverage/
+
+# Local working notes and experiment baselines (contain private project data)
+PROGRESS.md
+baselines/
