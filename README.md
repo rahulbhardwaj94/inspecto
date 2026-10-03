@@ -12,6 +12,10 @@
 
 ---
 
+## What's New in v1.3.0
+
+- **`inspecto fix`:** turns failures that keep recurring in a repo's sessions into CLAUDE.md rules (`--apply` to write them), then reports whether each rule reduced the failure it targets. See below.
+
 ## What's New in v1.2.0
 
 - **Privacy-safe history export:** `inspecto export --since 30d` produces pseudonymous per-session metrics for a team baseline without prompts, tool inputs/results, paths, branches, source code, user names, or raw session IDs.
