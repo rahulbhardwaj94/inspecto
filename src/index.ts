@@ -21,6 +21,7 @@ import { runReport } from "./commands/report.js";
 import { runCalibrate } from "./commands/calibrate.js";
 import { runFix } from "./commands/fix.js";
 import { runStatusline } from "./commands/statusline.js";
+import { runWrapped } from "./commands/wrapped.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -218,6 +219,23 @@ program
   .action(async (action, options) => {
     try {
       await runStatusline(action, options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("wrapped")
+  .description("Your year in Claude Code as shareable story cards (self-contained HTML)")
+  .option("--year <yyyy>", "Calendar year (default: current year)")
+  .option("--names", "Show project and file names (hidden by default for safe sharing)")
+  .option("--out <path>", "Output file path (default: inspecto-wrapped-<year>.html)")
+  .option("--json", "Print the stats as JSON instead of writing HTML")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runWrapped(options);
     } catch (error) {
       handleError(error);
     }

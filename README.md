@@ -27,6 +27,31 @@
 
 inspecto now answers a question no session indicator can: **did the work survive?**
 
+### `inspecto wrapped` — your year in Claude Code
+
+```bash
+npx inspecto wrapped              # this year → inspecto-wrapped-2026.html
+npx inspecto wrapped --year 2025  # a past year
+```
+
+Turns a year of sessions into six story cards sized for screenshots and sharing:
+
+- sessions, hours and active days
+- lines written, files edited, tokens generated and estimated spend
+- your busiest weekday and hour, with a weekday-by-hour heatmap and your longest streak
+- your agent's favourite tools and your top model
+- your average grade, best session and cache hit rate
+- a persona, such as The Night Owl, The Conductor, The Surgeon or The Streaker
+
+<p align="center">
+  <img src="docs/images/wrapped-grid-light.png" alt="The six Claude Code Wrapped cards: sessions, what you built, your rhythm heatmap, your toolbox, your craft and your persona" width="720">
+  &nbsp;
+  <img src="docs/images/wrapped-mobile-dark.png" alt="Claude Code Wrapped on a phone in dark mode" width="140">
+</p>
+<p align="center"><sub>Sample built from synthetic sessions. Left: desktop, light mode. Right: phone, dark mode.</sub></p>
+
+The output is a single self-contained HTML file computed locally. **Project and file names are hidden by default** so the page is safe to share; add `--names` to include them. `--json` prints the raw stats.
+
 ### `inspecto statusline` — live session health in Claude Code's status bar
 
 ```bash
