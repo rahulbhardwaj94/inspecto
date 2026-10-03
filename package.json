@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "inspecto": "./dist/index.js"
+    "inspecto": "dist/index.js"
   },
   "scripts": {
     "build": "tsup",
