@@ -19,6 +19,7 @@ import { runOutcomes } from "./commands/outcomes.js";
 import { runFleet } from "./commands/fleet.js";
 import { runReport } from "./commands/report.js";
 import { runCalibrate } from "./commands/calibrate.js";
+import { runFix } from "./commands/fix.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -184,6 +185,25 @@ program
   .action(async (options) => {
     try {
       await runCalibrate(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("fix")
+  .description("Turn recurring session failures in this repo into CLAUDE.md rules, and check whether past rules helped")
+  .option("--apply", "Write proposed rules into CLAUDE.md (default: dry run)")
+  .option("--since <duration>", "Time range: 7d, 14d, 30d, 90d", "30d")
+  .option("--min <n>", "Minimum occurrences before a failure becomes a rule", "2")
+  .option("--repo <path>", "Repository to analyze (default: current directory)")
+  .option("--file <path>", "CLAUDE.md to read and write (default: <repo>/CLAUDE.md)")
+  .option("--json", "Output as JSON")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runFix(options);
     } catch (error) {
       handleError(error);
     }
