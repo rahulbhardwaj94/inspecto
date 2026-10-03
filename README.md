@@ -27,6 +27,21 @@
 
 inspecto now answers a question no session indicator can: **did the work survive?**
 
+### `inspecto statusline` — live session health in Claude Code's status bar
+
+```bash
+npm i -g inspecto
+inspecto statusline install      # adds statusLine to ~/.claude/settings.json (--project for .claude/settings.json)
+```
+
+```
+inspecto B+ 84 · $1.84 · cache 72% · `npm test` failed 3× · inspecto fix
+```
+
+While you work, the status bar shows the current session's grade, its cost (Claude Code's own figure when it provides one), the cache hit rate, and at most one nudge. A nudge appears when a failure repeats inside the session, when you keep rephrasing the same request, or when the tool error rate is critical. The grade and cache rate appear after 3 assistant turns. Grading is cached per transcript size and modification time, so a refresh costs little more than Node's startup time.
+
+`install` won't overwrite a custom statusLine you already have unless you pass `--force`. `inspecto statusline uninstall` removes only inspecto's.
+
 ### `inspecto fix` — turn repeated failures into CLAUDE.md rules, then prove they helped
 
 ```bash
