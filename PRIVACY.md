@@ -22,9 +22,13 @@ Inspecto also maintains a local grade cache at `~/.claude/inspecto-cache.db`. Th
 
 The export does include the recorded model, grade, score, and computed metric values. Review any export before sharing it. Once you redirect output to a file or share it with another party, that copy is governed by your own storage, retention, access, and vendor policies.
 
+## Pulse community sharing (opt-in)
+
+`inspecto pulse` runs entirely locally. Its optional `--share` flag sends an anonymous payload to a collector **you** configure (`--endpoint` or `INSPECTO_PULSE_URL`, HTTPS only). There is no default endpoint, so nothing is sent unless you pass `--share` and configure a URL. The payload contains, per model and per UTC hour, only counts: sessions, tool calls, tool errors, consecutive message pairs, rephrased requests, edit calls and rejected edits, plus a schema version and the inspecto version. It contains no session or project identifiers, paths, prompts, code, tool inputs or results, timestamps finer than an hour, or user identifiers. Run `inspecto pulse --share-preview` to see exactly what would be sent. Once sent, the data is governed by the collector's operator.
+
 ## Network behavior
 
-Inspecto's runtime has no analytics or telemetry endpoint and needs no API key. Installing through npm and following links in the documentation involve third-party services governed by their own policies.
+Inspecto's runtime has no analytics or telemetry endpoint and needs no API key. The only network request it can make is the opt-in `pulse --share` described above. Installing through npm and following links in the documentation involve third-party services governed by their own policies.
 
 ## Team use
 

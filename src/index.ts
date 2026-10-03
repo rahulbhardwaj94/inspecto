@@ -22,6 +22,7 @@ import { runCalibrate } from "./commands/calibrate.js";
 import { runFix } from "./commands/fix.js";
 import { runStatusline } from "./commands/statusline.js";
 import { runWrapped } from "./commands/wrapped.js";
+import { runPulse } from "./commands/pulse.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -236,6 +237,26 @@ program
   .action(async (options) => {
     try {
       await runWrapped(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("pulse")
+  .description("Is Claude off today? Compare each model's recent sessions with your own baseline")
+  .option("--hours <n>", "Recent window in hours", "24")
+  .option("--baseline <days>", "Baseline window in days before the recent window", "14")
+  .option("--json", "Output as JSON")
+  .option("--share-preview", "Print the anonymous community payload without sending it")
+  .option("--share", "Send the anonymous payload to the configured pulse endpoint (opt-in)")
+  .option("--endpoint <url>", "Pulse collector URL (or set INSPECTO_PULSE_URL)")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .option("--no-fail", "Always exit 0, even when a model looks worse than usual")
+  .action(async (options) => {
+    try {
+      await runPulse(options);
     } catch (error) {
       handleError(error);
     }

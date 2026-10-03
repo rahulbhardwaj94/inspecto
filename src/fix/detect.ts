@@ -70,7 +70,7 @@ export function detectEvents(session: Session): FixEvent[] {
       const result = results.get(tool.id);
       if (!result) continue;
       const text = resultText(result);
-      if (result.is_error === true && NON_FAILURE_PATTERNS.some((p) => p.test(text))) continue;
+      if (result.is_error === true && isNonFailure(text)) continue;
 
       if (tool.name === "Bash") {
         const raw = tool.input.command;
@@ -263,6 +263,11 @@ export function makeRuleId(kind: FixKind, key: string): string {
   return `${kind}-${createHash("sha256").update(key).digest("hex").slice(0, 8)}`;
 }
 
+/** True when an error result means the user stopped the tool, not that the call was wrong. */
+export function isNonFailure(text: string): boolean {
+  return NON_FAILURE_PATTERNS.some((p) => p.test(text));
+}
+
 function collectResults(blocks: ContentBlock[]): Map<string, ToolResultBlock> {
   const map = new Map<string, ToolResultBlock>();
   for (const block of blocks) {
@@ -271,7 +276,7 @@ function collectResults(blocks: ContentBlock[]): Map<string, ToolResultBlock> {
   return map;
 }
 
-function resultText(result: ToolResultBlock): string {
+export function resultText(result: ToolResultBlock): string {
   if (typeof result.content === "string") return result.content;
   if (!Array.isArray(result.content)) return "";
   return result.content

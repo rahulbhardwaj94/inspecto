@@ -27,6 +27,25 @@
 
 inspecto now answers a question no session indicator can: **did the work survive?**
 
+### `inspecto pulse` — is Claude off today?
+
+```bash
+npx inspecto pulse                 # last 24h vs your previous 14 days, per model
+npx inspecto pulse --hours 6 --baseline 30
+```
+
+```
+  opus-5-5         ⚠ worse than usual
+    3 recent sessions · 8 baseline
+    ▲ tool errors          30% now vs   5% usual  z=5.1
+      rephrased requests     — now vs    — usual  too few samples
+      failed edits           — now vs    — usual  too few samples
+```
+
+For each model you used recently, pulse compares three symptoms against your own baseline: tool errors, requests you had to rephrase, and edits rejected for being made before a read or with a stale `old_string`. A symptom is flagged only when it is at least 1.5× your usual rate *and* the difference is statistically clear (two-proportion z ≥ 2). No verdict is given with fewer than 2 recent or 5 baseline sessions. The command exits 1 when a model looks worse than usual (`--no-fail` to disable), so it can gate scripts. It compares you with yourself, so a harder task can look like a regression too.
+
+**Community signal (opt-in).** `--share-preview` prints the anonymous payload: per model, per UTC hour, just the counts above, with no session IDs, paths, projects, prompts or user identifiers. `--share` sends that payload to a collector you configure with `--endpoint <https-url>` or `INSPECTO_PULSE_URL`. There is no built-in endpoint, so nothing is ever sent by default.
+
 ### `inspecto wrapped` — your year in Claude Code
 
 ```bash
