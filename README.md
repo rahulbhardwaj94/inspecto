@@ -43,6 +43,13 @@ Turns a year of sessions into six story cards sized for screenshots and sharing:
 - your average grade, best session and cache hit rate
 - a persona, such as The Night Owl, The Conductor, The Surgeon or The Streaker
 
+<p align="center">
+  <img src="docs/images/wrapped-grid-light.png" alt="The six Claude Code Wrapped cards: sessions, what you built, your rhythm heatmap, your toolbox, your craft and your persona" width="720">
+  &nbsp;
+  <img src="docs/images/wrapped-mobile-dark.png" alt="Claude Code Wrapped on a phone in dark mode" width="140">
+</p>
+<p align="center"><sub>Sample built from synthetic sessions. Left: desktop, light mode. Right: phone, dark mode.</sub></p>
+
 The output is a single self-contained HTML file computed locally. **Project and file names are hidden by default** so the page is safe to share; add `--names` to include them. `--json` prints the raw stats.
 
 ### `inspecto statusline` — live session health in Claude Code's status bar
