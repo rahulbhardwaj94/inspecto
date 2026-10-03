@@ -14,18 +14,9 @@
 
 ## What's New in v1.3.0
 
-- **`inspecto fix`:** turns failures that keep recurring in a repo's sessions into CLAUDE.md rules (`--apply` to write them), then reports whether each rule reduced the failure it targets. See below.
-
-## What's New in v1.2.0
-
-- **Privacy-safe history export:** `inspecto export --since 30d` produces pseudonymous per-session metrics for a team baseline without prompts, tool inputs/results, paths, branches, source code, user names, or raw session IDs.
-- **Model-aware cost estimates:** uses the model recorded on each turn, distinguishes 5-minute and 1-hour cache writes when available, and supports current Sonnet 5, Opus 4.5+, Haiku 4.5, Fable 5, and Mythos 5 pricing. Verify estimates against Anthropic billing.
-- **Commercial-readiness basics:** an actual MIT license, privacy and security documentation, explicit diagnostic disclaimers, and CI on Node.js 22 and 24.
-- **Outcome verification, fleet view, HTML reports, and metric calibration** — detailed below.
-
-### Outcome verification — did the work survive?
-
-inspecto now answers a question no session indicator can: **did the work survive?**
+- **`inspecto wrapped`:** your year in Claude Code as six shareable story cards, written to one self-contained HTML file. Project and file names are hidden by default.
+- **`inspecto statusline`:** the current session's grade, cost, cache hit rate and one nudge, live in Claude Code's status bar.
+- **`inspecto fix`:** turns failures that keep recurring in a repo's sessions into CLAUDE.md rules (`--apply` to write them), then reports whether each rule reduced the failure it targets.
 
 ### `inspecto wrapped` — your year in Claude Code
 
@@ -82,6 +73,17 @@ inspecto scans this repo's recent sessions for failures that keep coming back an
 - **Guessed paths** that don't exist
 
 Rules go into a marked block in `CLAUDE.md`. Each rule carries a comment with the time it was applied. Re-running is safe: rules already in the file are skipped, and you can reword them freely. On later runs, `fix` compares how often each rule's failure happened per session before and after it was applied, and labels the rule `working`, `no change` or `worse` once at least 3 sessions have started since. Commit the `CLAUDE.md` change and your whole team gets both the rule and the measurement.
+
+## What's New in v1.2.0
+
+- **Privacy-safe history export:** `inspecto export --since 30d` produces pseudonymous per-session metrics for a team baseline without prompts, tool inputs/results, paths, branches, source code, user names, or raw session IDs.
+- **Model-aware cost estimates:** uses the model recorded on each turn, distinguishes 5-minute and 1-hour cache writes when available, and supports current Sonnet 5, Opus 4.5+, Haiku 4.5, Fable 5, and Mythos 5 pricing. Verify estimates against Anthropic billing.
+- **Commercial-readiness basics:** an actual MIT license, privacy and security documentation, explicit diagnostic disclaimers, and CI on Node.js 22 and 24.
+- **Outcome verification, fleet view, HTML reports, and metric calibration** — detailed below.
+
+### Outcome verification — did the work survive?
+
+inspecto now answers a question no session indicator can: **did the work survive?**
 
 ### `inspecto outcomes` — link sessions to git and measure survival
 
