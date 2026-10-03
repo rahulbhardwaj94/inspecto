@@ -20,6 +20,7 @@ import { runFleet } from "./commands/fleet.js";
 import { runReport } from "./commands/report.js";
 import { runCalibrate } from "./commands/calibrate.js";
 import { runFix } from "./commands/fix.js";
+import { runStatusline } from "./commands/statusline.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -204,6 +205,19 @@ program
   .action(async (options) => {
     try {
       await runFix(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("statusline [action]")
+  .description("Live one-line summary for Claude Code's status bar; `install` / `uninstall` manage settings.json")
+  .option("--project", "Use this project's .claude/settings.json instead of ~/.claude/settings.json")
+  .option("--force", "Replace an existing non-inspecto statusLine")
+  .action(async (action, options) => {
+    try {
+      await runStatusline(action, options);
     } catch (error) {
       handleError(error);
     }
