@@ -23,6 +23,22 @@
 
 inspecto now answers a question no session indicator can: **did the work survive?**
 
+### `inspecto fix` — turn repeated failures into CLAUDE.md rules, then prove they helped
+
+```bash
+npx inspecto fix            # dry run: show proposed rules for this repo
+npx inspecto fix --apply    # write them into CLAUDE.md
+```
+
+inspecto scans this repo's recent sessions for failures that keep coming back and drafts a rule for each:
+
+- **Command corrections**: `npm test` failed, then `npx vitest run` worked → *"Run `npx vitest run` instead of `npm test`."*
+- **Commands that keep failing** and never had a working alternative
+- **Edits made before reading the file**, and **stale edits** where `old_string` didn't match
+- **Guessed paths** that don't exist
+
+Rules go into a marked block in `CLAUDE.md`. Each rule carries a comment with the time it was applied. Re-running is safe: rules already in the file are skipped, and you can reword them freely. On later runs, `fix` compares how often each rule's failure happened per session before and after it was applied, and labels the rule `working`, `no change` or `worse` once at least 3 sessions have started since. Commit the `CLAUDE.md` change and your whole team gets both the rule and the measurement.
+
 ### `inspecto outcomes` — link sessions to git and measure survival
 
 ```bash
