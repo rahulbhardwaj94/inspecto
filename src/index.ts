@@ -30,7 +30,7 @@ const program = new Command();
 
 program
   .name("inspecto")
-  .description("Claude Code session quality analyzer — grade sessions, detect regressions, catch cache bugs")
+  .description("See what your Claude Code sessions cost, what keeps going wrong, and what to fix")
   .version(VERSION);
 
 program
