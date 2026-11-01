@@ -12,6 +12,26 @@
 
 ---
 
+## Quickstart
+
+```bash
+npx inspecto                      # spend, average grade and the top 3 fixes for the last 30 days
+npx inspecto audit                # your latest session, metric by metric
+npm i -g inspecto && inspecto statusline install   # live grade and cost in Claude Code's status bar
+```
+
+Requires Node.js 22.5 or newer. Everything runs locally; nothing is uploaded.
+
+---
+
+## What's New in v1.4.0
+
+- **`inspecto` with no arguments now prints a summary** of the last 30 days: total estimated spend, average grade, the projects where spend went, and up to three concrete fixes (repeated failures `inspecto fix` can turn into CLAUDE.md rules, broken prompt caching, sessions over $50 that make up most of the spend, and requests you kept rephrasing). `--since 90d` widens the window; `--json` prints the raw summary.
+- **The grade is recalibrated.** Reads-before-edit and rewrite ratio are now informational: they're still computed and shown, but they no longer count toward the grade. Checked against git outcomes with `inspecto calibrate`, both moved opposite to what the grade assumed, and reads-before-edit flagged about 80% of sessions, which gave nearly everyone a D. Their 25% of the weight now goes to task completion, retry density, tool error rate and thinking utilization. Expect grades to rise, and old cached grades to be recomputed once. To grade either metric again, give it a weight in `.inspecto.json`.
+- **No more `ExperimentalWarning: SQLite…`** on every run under Node 22.
+
+> **Breaking:** bare `inspecto` used to run `audit`. Scripts and CI jobs that relied on it (including its exit code 1 for D/F grades) should call `inspecto audit` explicitly.
+
 ## What's New in v1.3.0
 
 - **`inspecto wrapped`:** your year in Claude Code as six shareable story cards, written to one self-contained HTML file. Project and file names are hidden by default.
@@ -222,20 +242,22 @@ Use Inspecto to form a testable hypothesis about retries, rewrites, context read
 
 Each indicator is a pure function computed from your local session files.
 
-| # | Metric | What it detects | Healthy |
-|---|---|---|---|
-| **M1** | Reads-before-edit ratio | Claude editing without reading context first | ≥ 4.0 |
-| **M2** | Rewrite ratio | Full-file rewrites instead of surgical edits | ≤ 0.25 |
-| **M3** | Cache hit rate | Prompt cache bugs inflating token costs | ≥ 0.50 |
-| **M4** | Task completion | "I'll do X" promises without follow-through | ≥ 0.90 |
-| **M5** | Retry density | User repeating themselves (proxy for misunderstanding) | ≤ 0.10 |
-| **M6** | Tool diversity | Over-reliance on a narrow set of tools (Shannon entropy) | ≥ 0.60 |
-| **M7** | Tokens per edit | Token cost per productive action | ≤ 5,000 |
-| **M8** | Subagent overhead | Fraction of token work delegated to subagents | < 0.60 |
-| **M9** | Tool error rate | Rate of tool calls returning errors | ≤ 5% |
-| **M10** | Thinking utilization | Fraction of tool-using turns with extended thinking | ≥ 30% |
-| **M11** | MCP usage | Count of MCP tool turns (informational) | — |
-| **M12** | Session cost | Total estimated session cost | ≤ $2.00 |
+| # | Metric | What it detects | Healthy | Weight |
+|---|---|---|---|---|
+| **M1** | Reads-before-edit ratio | Claude editing without reading context first | ≥ 4.0 | info |
+| **M2** | Rewrite ratio | Full-file rewrites instead of surgical edits | ≤ 0.25 | info |
+| **M3** | Cache hit rate | Prompt cache bugs inflating token costs | ≥ 0.50 | 11% |
+| **M4** | Task completion | "I'll do X" promises without follow-through | ≥ 0.90 | 18% |
+| **M5** | Retry density | User repeating themselves (proxy for misunderstanding) | ≤ 0.10 | 14% |
+| **M6** | Tool diversity | Over-reliance on a narrow set of tools (Shannon entropy) | ≥ 0.60 | 6% |
+| **M7** | Tokens per edit | Token cost per productive action | ≤ 5,000 | 11% |
+| **M8** | Subagent overhead | Fraction of token work delegated to subagents | < 0.60 | 5% |
+| **M9** | Tool error rate | Rate of tool calls returning errors | ≤ 5% | 16% |
+| **M10** | Thinking utilization | Fraction of tool-using turns with extended thinking | ≥ 30% | 9% |
+| **M11** | MCP usage | Count of MCP tool turns (informational) | — | 5% |
+| **M12** | Session cost | Total estimated session cost | ≤ $2.00 | 5% |
+
+"info" metrics are shown but not graded (see v1.4.0 above); set a weight in `.inspecto.json` to grade them.
 
 ### How it works
 
@@ -261,14 +283,21 @@ Or run without installing:
 npx inspecto
 ```
 
-Requires Node.js >= 22 (uses the built-in `node:sqlite` module). Works on macOS, Linux, and Windows.
+Requires Node.js >= 22.5 (uses the built-in `node:sqlite` module). Works on macOS, Linux, and Windows.
 
 ---
+
+### See the big picture
+
+```bash
+npx inspecto              # last 30 days: spend, average grade, top 3 fixes
+npx inspecto --since 90d
+```
 
 ### Grade your most recent session
 
 ```bash
-npx inspecto
+npx inspecto audit
 ```
 
 ```
@@ -280,8 +309,8 @@ npx inspecto
 
   Metric                 Value    Status
   ─────────────────────────────────────────
-  Reads/edit             4.2      ✓ healthy
-  Rewrite ratio          0.18     ✓ healthy
+  Reads/edit             4.2      · info (not graded)
+  Rewrite ratio          0.18     · info (not graded)
   Cache hit rate         0.73     ✓ healthy
   Task completion        0.95     ✓ healthy
   Retry density          0.08     ✓ healthy

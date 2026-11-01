@@ -49,7 +49,7 @@ const TIPS: Record<string, Record<string, string>> = {
 };
 
 export function getTip(metric: MetricResult): string | null {
-  if (metric.status === "healthy") return null;
+  if (metric.status === "healthy" || metric.informational) return null;
 
   const metricTips = TIPS[metric.name];
   if (!metricTips) return null;

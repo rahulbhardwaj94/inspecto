@@ -40,6 +40,7 @@ export function formatAuditJson(session: Session, grade: GradeResult): string {
       value: m.value,
       status: m.status,
       label: m.label,
+      ...(m.informational ? { informational: true } : {}),
     })),
   };
 

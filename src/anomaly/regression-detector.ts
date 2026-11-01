@@ -28,11 +28,12 @@ const INVERTED_METRICS = new Set([
 ]);
 
 /**
- * Informational metrics that never represent quality. They always score 100
- * and must never be flagged as a regression regardless of which direction
- * they move.
+ * Informational metrics that are not graded by default and must never be
+ * flagged as a regression regardless of which direction they move.
+ * reads-per-edit and rewrite-ratio were demoted after calibration showed
+ * they do not predict outcomes (see GRADER_VERSION in metrics/grader.ts).
  */
-const INFORMATIONAL_METRICS = new Set(["mcp-usage"]);
+const INFORMATIONAL_METRICS = new Set(["mcp-usage", "reads-per-edit", "rewrite-ratio"]);
 
 /**
  * Detect regressions from baseline averages.

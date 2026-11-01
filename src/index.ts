@@ -22,6 +22,7 @@ import { runCalibrate } from "./commands/calibrate.js";
 import { runFix } from "./commands/fix.js";
 import { runStatusline } from "./commands/statusline.js";
 import { runWrapped } from "./commands/wrapped.js";
+import { runSummary } from "./commands/summary.js";
 import { getCacheFilePath } from "./utils/paths.js";
 import { VERSION } from "./version.js";
 
@@ -33,7 +34,22 @@ program
   .version(VERSION);
 
 program
-  .command("audit", { isDefault: true })
+  .command("summary", { isDefault: true })
+  .description("Spend, grade and the top fixes across your recent sessions (runs when no command is given)")
+  .option("--since <duration>", "Time range: 7d, 14d, 30d, 90d", "30d")
+  .option("--json", "Output as JSON")
+  .option("--data-dir <path>", "Custom Claude data directory")
+  .option("--project <name>", "Filter to a specific project")
+  .action(async (options) => {
+    try {
+      await runSummary(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+program
+  .command("audit")
   .description("Grade the most recent Claude Code session")
   .option("--json", "Output as JSON")
   .option("--format <format>", "Output format: json, csv")

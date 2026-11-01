@@ -194,6 +194,8 @@ export interface MetricResult {
   status: MetricStatus;
   label: string;
   detail?: string;
+  /** Set by the grader when the metric has weight 0: shown, but not graded. */
+  informational?: boolean;
 }
 
 export interface GradeResult {

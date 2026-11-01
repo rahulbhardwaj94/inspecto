@@ -32,12 +32,12 @@ describe("detectRegressions: direction handling", () => {
   });
 
   it("flags a >30% drop in a higher-is-better metric as a regression", () => {
-    const [result] = detectRegressions([baseline("reads-per-edit", -45)]);
+    const [result] = detectRegressions([baseline("cache-hit-rate", -45)]);
     expect(result.status).toBe("regression");
   });
 
   it("flags a 10-30% drop in a higher-is-better metric as declining", () => {
-    const [result] = detectRegressions([baseline("reads-per-edit", -14)]);
+    const [result] = detectRegressions([baseline("cache-hit-rate", -14)]);
     expect(result.status).toBe("declining");
   });
 
@@ -49,5 +49,10 @@ describe("detectRegressions: direction handling", () => {
   it("never flags the informational mcp-usage metric, even on a large drop", () => {
     const [result] = detectRegressions([baseline("mcp-usage", -80)]);
     expect(result.status).toBe("stable");
+  });
+
+  it("never flags the demoted reads-per-edit and rewrite-ratio metrics", () => {
+    const results = detectRegressions([baseline("reads-per-edit", -80), baseline("rewrite-ratio", 80)]);
+    expect(results.map((r) => r.status)).toEqual(["stable", "stable"]);
   });
 });
