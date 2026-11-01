@@ -1,530 +1,221 @@
 # inspecto
 
 [![npm version](https://img.shields.io/npm/v/inspecto)](https://www.npmjs.com/package/inspecto)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
+[![CI](https://github.com/rahulbhardwaj94/inspecto/actions/workflows/ci.yml/badge.svg)](https://github.com/rahulbhardwaj94/inspecto/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js >= 22.5](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen)](https://nodejs.org)
 
-**Local Claude Code session diagnostics — inspect patterns, detect regressions, catch cache anomalies.**
+**See what your Claude Code sessions cost, what keeps going wrong, and what to fix.**
 
-> 3,211 npm package downloads between April 11 and July 13, 2026.
-
-**Using inspecto?** inspecto is local-only by design — it phones no one home, which means the *only* way we learn what to build next is if you tell us. [Open an issue or share how you use it](https://github.com/rahulbhardwaj94/inspecto/issues), or ⭐ the repo if it saved you a token.
-
----
-
-## Quickstart
-
-```bash
-npx inspecto                      # spend, average grade and the top 3 fixes for the last 30 days
-npx inspecto audit                # your latest session, metric by metric
-npm i -g inspecto && inspecto statusline install   # live grade and cost in Claude Code's status bar
-```
-
-Requires Node.js 22.5 or newer. Everything runs locally; nothing is uploaded.
-
----
-
-## What's New in v1.4.0
-
-- **`inspecto` with no arguments now prints a summary** of the last 30 days: total estimated spend, average grade, the projects where spend went, and up to three concrete fixes (repeated failures `inspecto fix` can turn into CLAUDE.md rules, broken prompt caching, sessions over $50 that make up most of the spend, and requests you kept rephrasing). `--since 90d` widens the window; `--json` prints the raw summary.
-- **The grade is recalibrated.** Reads-before-edit and rewrite ratio are now informational: they're still computed and shown, but they no longer count toward the grade. Checked against git outcomes with `inspecto calibrate`, both moved opposite to what the grade assumed, and reads-before-edit flagged about 80% of sessions, which gave nearly everyone a D. Their 25% of the weight now goes to task completion, retry density, tool error rate and thinking utilization. Expect grades to rise, and old cached grades to be recomputed once. To grade either metric again, give it a weight in `.inspecto.json`.
-- **No more `ExperimentalWarning: SQLite…`** on every run under Node 22.
-
-> **Breaking:** bare `inspecto` used to run `audit`. Scripts and CI jobs that relied on it (including its exit code 1 for D/F grades) should call `inspecto audit` explicitly.
-
-## What's New in v1.3.0
-
-- **`inspecto wrapped`:** your year in Claude Code as six shareable story cards, written to one self-contained HTML file. Project and file names are hidden by default.
-- **`inspecto statusline`:** the current session's grade, cost, cache hit rate and one nudge, live in Claude Code's status bar.
-- **`inspecto fix`:** turns failures that keep recurring in a repo's sessions into CLAUDE.md rules (`--apply` to write them), then reports whether each rule reduced the failure it targets.
-
-### `inspecto wrapped` — your year in Claude Code
-
-```bash
-npx inspecto wrapped              # this year → inspecto-wrapped-2026.html
-npx inspecto wrapped --year 2025  # a past year
-```
-
-Turns a year of sessions into six story cards sized for screenshots and sharing:
-
-- sessions, hours and active days
-- lines written, files edited, tokens generated and estimated spend
-- your busiest weekday and hour, with a weekday-by-hour heatmap and your longest streak
-- your agent's favourite tools and your top model
-- your average grade, best session and cache hit rate
-- a persona, such as The Night Owl, The Conductor, The Surgeon or The Streaker
-
-<p align="center">
-  <img src="docs/images/wrapped-grid-light.png" alt="The six Claude Code Wrapped cards: sessions, what you built, your rhythm heatmap, your toolbox, your craft and your persona" width="720">
-  &nbsp;
-  <img src="docs/images/wrapped-mobile-dark.png" alt="Claude Code Wrapped on a phone in dark mode" width="140">
-</p>
-<p align="center"><sub>Sample built from synthetic sessions. Left: desktop, light mode. Right: phone, dark mode.</sub></p>
-
-The output is a single self-contained HTML file computed locally. **Project and file names are hidden by default** so the page is safe to share; add `--names` to include them. `--json` prints the raw stats.
-
-### `inspecto statusline` — live session health in Claude Code's status bar
-
-```bash
-npm i -g inspecto
-inspecto statusline install      # adds statusLine to ~/.claude/settings.json (--project for .claude/settings.json)
-```
-
-```
-inspecto B+ 84 · $1.84 · cache 72% · `npm test` failed 3× · inspecto fix
-```
-
-While you work, the status bar shows the current session's grade, its cost (Claude Code's own figure when it provides one), the cache hit rate, and at most one nudge. A nudge appears when a failure repeats inside the session, when you keep rephrasing the same request, or when the tool error rate is critical. The grade and cache rate appear after 3 assistant turns. Grading is cached per transcript size and modification time, so a refresh costs little more than Node's startup time.
-
-`install` won't overwrite a custom statusLine you already have unless you pass `--force`. `inspecto statusline uninstall` removes only inspecto's.
-
-### `inspecto fix` — turn repeated failures into CLAUDE.md rules, then prove they helped
-
-```bash
-npx inspecto fix            # dry run: show proposed rules for this repo
-npx inspecto fix --apply    # write them into CLAUDE.md
-```
-
-inspecto scans this repo's recent sessions for failures that keep coming back and drafts a rule for each:
-
-- **Command corrections**: `npm test` failed, then `npx vitest run` worked → *"Run `npx vitest run` instead of `npm test`."*
-- **Commands that keep failing** and never had a working alternative
-- **Edits made before reading the file**, and **stale edits** where `old_string` didn't match
-- **Guessed paths** that don't exist
-
-Rules go into a marked block in `CLAUDE.md`. Each rule carries a comment with the time it was applied. Re-running is safe: rules already in the file are skipped, and you can reword them freely. On later runs, `fix` compares how often each rule's failure happened per session before and after it was applied, and labels the rule `working`, `no change` or `worse` once at least 3 sessions have started since. Commit the `CLAUDE.md` change and your whole team gets both the rule and the measurement.
-
-## What's New in v1.2.0
-
-- **Privacy-safe history export:** `inspecto export --since 30d` produces pseudonymous per-session metrics for a team baseline without prompts, tool inputs/results, paths, branches, source code, user names, or raw session IDs.
-- **Model-aware cost estimates:** uses the model recorded on each turn, distinguishes 5-minute and 1-hour cache writes when available, and supports current Sonnet 5, Opus 4.5+, Haiku 4.5, Fable 5, and Mythos 5 pricing. Verify estimates against Anthropic billing.
-- **Commercial-readiness basics:** an actual MIT license, privacy and security documentation, explicit diagnostic disclaimers, and CI on Node.js 22 and 24.
-- **Outcome verification, fleet view, HTML reports, and metric calibration** — detailed below.
-
-### Outcome verification — did the work survive?
-
-inspecto now answers a question no session indicator can: **did the work survive?**
-
-### `inspecto outcomes` — link sessions to git and measure survival
-
-```bash
-npx inspecto outcomes --since 14d
-```
-
-For every session, inspecto finds the commits that carried its work (same repo, commits within the session window + 24h that touch the files the session edited), then uses `git blame` at HEAD to measure how many of those lines are still alive. You get two numbers that exist nowhere else:
-
-- **Edit survival rate** — the fraction of session-authored lines still in your codebase
-- **Cost per surviving change** — session cost divided by the commits that actually landed
-
-All git analysis is local (`git log`, `git show`, `git blame`) — no GitHub API, works offline, and sessions outside a git repo are skipped gracefully.
-
-### `inspecto fleet` — every agent run in one view
-
-```bash
-npx inspecto fleet --since 7d
-```
-
-One table across all projects: session, project, model, duration, turns, subagents, cost, grade — plus total cost and average grade for the window. The morning-after view of everything your agents did.
-
-### `inspecto calibrate` — which metrics actually predict outcomes?
-
-```bash
-npx inspecto calibrate --since 90d
-```
-
-Every quality tool asserts what "good" looks like. inspecto can now **test that claim against your own history**: it correlates each of the 12 metrics with whether the code from those sessions actually survived in git, and labels each one `predictive`, `weak`, `no signal`, or `FALSE ALARM` (fires constantly, predicts nothing).
-
-It also flags metrics that correlate *opposite* to the grader's own assumption, reports `n` everywhere, and withholds a verdict below 8 linked sessions. Correlation isn't causation and survival has a ceiling effect — the output says so.
-
-### `inspecto report` — a shareable HTML report
-
-```bash
-npx inspecto report --since 7d --outcomes
-```
-
-Writes a single self-contained `inspecto-report.html` (no external assets, dark/light aware): summary cards, a score-over-time sparkline, per-project rollup, the full fleet table, and — with `--outcomes` — the survival analysis. Drop it in Slack or attach it to a retro.
-
----
-
-## What's New in v1.1.5
-
-Bug fix: trend analysis no longer misreports improvements as regressions. Metrics where lower is better — `tool-error-rate`, `session-cost`, and `subagent-overhead` — were being flagged as regressions when they *improved* (e.g. a falling error rate showing up as "REGRESSION"). The informational `mcp-usage` metric is also no longer flagged when usage simply drops between windows.
-
-## What's New in v1.1.4
-
-Thank you to everyone who has tried the package. Here's what shipped.
-
-### 5 new diagnostic indicators — 7 → 12
-
-| # | Metric | What it measures |
-|---|---|---|
-| **M8** | Subagent overhead | Whether Claude is delegating work to subagents efficiently — and whether those subagents are doing meaningful work |
-| **M9** | Tool error rate | How often Claude's tool calls return errors. High rates mean Claude is calling tools with bad arguments or on paths that don't exist |
-| **M10** | Thinking utilization | Whether extended thinking is actually being used on turns that warrant it. Low utilization on complex sessions often predicts high retry density |
-| **M11** | MCP usage | Informational count of MCP tool calls (web search, web fetch, custom servers) per session |
-| **M12** | Session cost | Model-aware estimate from recorded token usage and cache duration; Anthropic billing remains the source of truth |
-
-All 12 indicators are pure functions of your local session files. No data leaves your machine unless you explicitly export and share the computed output.
-
-### Watch mode
-
-```bash
-npx inspecto watch
-```
-
-Streams live metric updates as Claude Code writes to the active session. Grade updates every time a new assistant turn lands. Hit Ctrl-C to exit.
-
-### Per-project config
-
-Drop `.inspecto.json` in your repo root to override thresholds and weights for your team:
-
-```json
-{
-  "thresholds": {
-    "tokensPerEdit": { "healthy": 8000, "warning": 15000 },
-    "sessionCost":   { "healthy": 5.00, "warning": 10.00 }
-  },
-  "weights": {
-    "cacheHitRate": 0.20,
-    "taskCompletion": 0.20
-  }
-}
-```
-
-Validate your config at any time:
-
-```bash
-npx inspecto config validate
-```
-
-### 2–3× faster trend and compare
-
-Computed grades are now cached in `~/.claude/inspecto-cache.db` (SQLite via `node:sqlite`). Cache key is `sha256(path:mtime)` — it invalidates automatically when Claude Code appends to a session. Re-runs over unchanged sessions skip parsing entirely. Up to 16 sessions are also parsed in parallel, so a 300-session history finishes in seconds instead of minutes.
-
-### CI exit codes
-
-`audit`, `trend`, and `cache-check` now exit 1 on failures. Drop into any pipeline:
-
-```bash
-npx inspecto trend --since 14d   # exits 1 on any regression
-npx inspecto audit --no-fail     # warns but never blocks
-```
-
-### Other additions
-
-- **`inspecto list`** — discover your projects and sessions before running audit or compare. No more guessing project slugs for `--project`.
-- **Metrics-only history export** — `inspecto export --since 30d` produces pseudonymous, per-session metrics without prompts, tool inputs/results, paths, source code, git branches, or raw session IDs.
-- **CSV export** — `--format csv` on `audit` and `trend` for dashboards, spreadsheets, and log aggregators.
-- **Subagent session aggregation** — inspecto now reads subagent JSONL files (`{sessionId}/subagents/agent-*.jsonl`) and merges them into the parent session. Multi-agent sessions were previously graded with large gaps in tool calls and token usage.
-- **Format version detection** — inspecto now reads the `version` field on every JSONL record and warns when the format differs from what it was built against. Unknown record types are surfaced in the output rather than silently dropped.
-
----
-
-## Why I built this
-
-Anthropic's April 23, 2026 [postmortem](https://www.anthropic.com/engineering/april-23-postmortem) confirmed that multiple Claude Code regressions escaped initial internal reproduction. That makes a customer-specific longitudinal baseline useful—but it does not mean one heuristic can prove that a model, developer, or workflow is productive.
-
-Anthropic Analytics should remain your source of truth for official adoption, contribution, value, and billing data. OpenTelemetry is the right choice when you already operate an observability pipeline. Inspecto adds a ready-made, offline session-behavior baseline for teams that want directional signals without deploying a collector or uploading raw sessions.
-
----
-
-## What it does
-
-`inspecto` reads the JSONL session logs Claude Code already writes to `~/.claude/projects/` and calculates 12 diagnostic indicators — no API key, no telemetry collector, fully offline.
-
-Use Inspecto to form a testable hypothesis about retries, rewrites, context reads, cache reuse, tool errors, and token patterns. Validate any conclusion against your own delivery, defect, review, and lead-time measures.
-
-> Inspecto is independent and is not affiliated with, endorsed by, or sponsored by Anthropic. Its indicators and composite grade are heuristic diagnostics, not employee-performance ratings or proof of productivity, code quality, or cost savings.
-
-<img width="427" height="338" alt="Screenshot 2026-04-11 at 6 00 37 PM" src="https://github.com/user-attachments/assets/81777511-dd45-4ae0-8382-8e008dd98a7a" />
-
-### The 12 diagnostic indicators
-
-Each indicator is a pure function computed from your local session files.
-
-| # | Metric | What it detects | Healthy | Weight |
-|---|---|---|---|---|
-| **M1** | Reads-before-edit ratio | Claude editing without reading context first | ≥ 4.0 | info |
-| **M2** | Rewrite ratio | Full-file rewrites instead of surgical edits | ≤ 0.25 | info |
-| **M3** | Cache hit rate | Prompt cache bugs inflating token costs | ≥ 0.50 | 11% |
-| **M4** | Task completion | "I'll do X" promises without follow-through | ≥ 0.90 | 18% |
-| **M5** | Retry density | User repeating themselves (proxy for misunderstanding) | ≤ 0.10 | 14% |
-| **M6** | Tool diversity | Over-reliance on a narrow set of tools (Shannon entropy) | ≥ 0.60 | 6% |
-| **M7** | Tokens per edit | Token cost per productive action | ≤ 5,000 | 11% |
-| **M8** | Subagent overhead | Fraction of token work delegated to subagents | < 0.60 | 5% |
-| **M9** | Tool error rate | Rate of tool calls returning errors | ≤ 5% | 16% |
-| **M10** | Thinking utilization | Fraction of tool-using turns with extended thinking | ≥ 30% | 9% |
-| **M11** | MCP usage | Count of MCP tool turns (informational) | — | 5% |
-| **M12** | Session cost | Total estimated session cost | ≤ $2.00 | 5% |
-
-"info" metrics are shown but not graded (see v1.4.0 above); set a weight in `.inspecto.json` to grade them.
-
-### How it works
-
-Claude Code writes one JSONL session file per conversation to `~/.claude/projects/{project}/{sessionId}.jsonl`. Each line is a JSON record — user messages, assistant responses (streamed as multiple chunks), tool calls, and tool results. Subagent sessions land in `{sessionId}/subagents/agent-*.jsonl`.
-
-`inspecto` streams these files line-by-line (never loading 100MB+ files into memory), merges streaming chunks by `message.id`, aggregates subagent turns into the parent session, extracts tool-use patterns and token usage, and computes the 12 metrics above.
-
-The composite grade is a weighted average mapped to a letter grade from **A+** to **F**.
-
----
-
-## How to use it
-
-### Install
-
-```bash
-npm install -g inspecto
-```
-
-Or run without installing:
+Claude Code already saves a log of every session on your computer. inspecto reads those logs and tells you, in plain words, where your money and time went. It runs on your machine, needs no API key, and uploads nothing.
 
 ```bash
 npx inspecto
 ```
 
-Requires Node.js >= 22.5 (uses the built-in `node:sqlite` module). Works on macOS, Linux, and Windows.
+---
+
+## What you get
+
+Here is real output from the author's own last 30 days (project names replaced):
+
+```
+  inspecto v1.4.0 — your Claude Code sessions, last 30d
+
+  24 sessions · 18 projects · $1,861.93 estimated · avg grade B (84)
+
+  Where the spend went
+    project-a   $422.31   23% · 1 session
+    project-b   $347.66   19% · 1 session
+    project-c   $245.19   13% · 2 sessions
+
+  Fix these first
+    1. 56 edits were rejected because the file had not been read first. (project-a, project-b +4 more)
+       → run inspecto fix --apply in each repo to add a CLAUDE.md rule; later runs report whether it helped
+    2. 14 edits failed because `old_string` didn't match the file. (project-d)
+       → run inspecto fix --apply in that repo to add a CLAUDE.md rule; later runs report whether it helped
+    3. 10 sessions cost over $50 each — $1,675.25, 90% of your spend.
+       → every turn re-sends the whole conversation, so long sessions get pricier per turn; start a fresh session (/clear) between tasks
+```
+
+In one screen you see:
+
+- **What you spent**, and which projects it went to.
+- **Mistakes Claude keeps repeating**, like editing a file it hasn't read, or running a command that always fails.
+- **Waste you can stop**, like a broken prompt cache, or one very long session that costs more with every message.
+- **What to do next**, as a command you can copy.
+
+Cost is an estimate based on public API prices. On a Pro or Max plan, read it as "how much of your plan this used", not as a bill.
 
 ---
 
-### See the big picture
+## Proof that it's worth listening to
 
-```bash
-npx inspecto              # last 30 days: spend, average grade, top 3 fixes
-npx inspecto --since 90d
-```
+A tool that grades your work should show its own evidence. These numbers all come from the author's own history; you can run the same commands on yours.
 
-### Grade your most recent session
-
-```bash
-npx inspecto audit
-```
+**1. It checks whether Claude's work actually lasted.**
+`inspecto outcomes` matches each session to the git commits it produced, then counts how many of those lines are still in the code today.
 
 ```
-  inspecto v1.1.0 — Claude Code Session Quality Analyzer
-
-  Session: 31f3f224 | my-app | 47 min | claude-opus-4-6
-
-  Overall grade: B+
-
-  Metric                 Value    Status
-  ─────────────────────────────────────────
-  Reads/edit             4.2      · info (not graded)
-  Rewrite ratio          0.18     · info (not graded)
-  Cache hit rate         0.73     ✓ healthy
-  Task completion        0.95     ✓ healthy
-  Retry density          0.08     ✓ healthy
-  Tool diversity         0.52     ⚠ warning
-  Tokens/useful-edit     3,218    ✓ healthy
-  Subagent overhead      0.41     ✓ healthy
-  Tool error rate        0.03     ✓ healthy
-  Thinking utilization   0.44     ✓ healthy
-  MCP usage              7        ✓ healthy
-  Session cost           $1.24    ✓ healthy
-  ...
+  Linked to commits:        14 sessions (link rate 93%)
+  Edit survival rate:       95% (52,573 of 55,117 lines alive at HEAD)
+  Cost per surviving change: $7.00 (200 commits)
 ```
 
-### Watch a session live
+**2. It tests its own grade, and dropped the parts that failed.**
+`inspecto calibrate` checks whether each metric actually predicts code that lasts. Two of them did not:
 
-```bash
-npx inspecto watch
-npx inspecto watch --project my-app
-```
+| Metric | Flagged as a problem | Did it predict code that lasted? | What we did |
+|---|---|---|---|
+| Reads before each edit | 84% of sessions | No, it moved the wrong way | Removed from the grade |
+| Full-file rewrites | 68% of sessions | No, it moved the wrong way | Removed from the grade |
+| Session cost | 76% of sessions | Yes, the strongest signal (ρ = −0.63) | Kept |
 
-Clears and re-renders the full audit report every time Claude Code writes a new turn. Useful during long sessions to catch degradation before it compounds.
+Before this change, almost every session got a D, even when its code lasted. After it, the same 24 sessions average a B (84). The two removed metrics are still shown, marked "info (not graded)". This sample is one developer's history (15 sessions with commits), so run `inspecto calibrate` on your own data rather than trusting ours.
 
-### Detect regressions over time
+**3. It turns repeated mistakes into rules, then checks whether the rules worked.**
+`inspecto fix` found that the most common failure across 6 of the author's projects was Claude editing files before reading them (56 times). It writes a rule for that into `CLAUDE.md`. On later runs it compares how often the mistake happened before and after the rule, and labels the rule `working`, `no change` or `worse`.
 
-```bash
-npx inspecto trend --since 14d
-```
-
-Compares the most recent half of your sessions against the full period and flags metrics that have regressed by more than 30%.
-
-### Catch the prompt cache bug
-
-```bash
-npx inspecto cache-check
-```
-
-On March 31, 2026, the leaked Claude Code source revealed two cache bugs that silently inflate token costs 10-20x. This command detects sessions where the cache hit rate is suspiciously low.
-
-### Discover projects and sessions
-
-```bash
-# List all projects with session counts and last-active dates
-npx inspecto list
-
-# Show the 20 most recent sessions across all projects
-npx inspecto list --sessions
-
-# Show all sessions for a specific project
-npx inspecto list --project my-app
-```
-
-```
-  Projects (9 found)
-
-  ─────────────────────────────────────────────
-    Project            Sessions   Last active
-  ─────────────────────────────────────────────
-    my-app             47         2026-06-08
-    api-gateway        12         2026-06-01
-    shared-lib          3         2026-05-28
-  ─────────────────────────────────────────────
-```
-
-### Compare projects
-
-```bash
-npx inspecto compare --projects my-app,api-gateway,shared-lib
-```
-
-### Manage the grade cache
-
-```bash
-npx inspecto cache clear   # delete the cache file (~/.claude/inspecto-cache.db)
-```
-
-`inspecto trend` and `inspecto compare` cache computed grades in `~/.claude/inspecto-cache.db`. The cache is keyed by file path + mtime and invalidates automatically when Claude Code writes new data.
+**4. It's tested.** Over 140 automated tests run on Node 22 and 24 on every change ([CI](https://github.com/rahulbhardwaj94/inspecto/actions/workflows/ci.yml)).
 
 ---
 
-### CI integration
+## The commands you'll use
 
-`inspecto` exits with a non-zero code when quality drops below acceptable thresholds:
+| Command | What it does |
+|---|---|
+| `npx inspecto` | The summary above: spend, grade, and the top 3 fixes for the last 30 days. |
+| `npx inspecto audit` | Your latest session, metric by metric, with tips. |
+| `npx inspecto fix` | Finds mistakes that keep repeating in this repo and drafts `CLAUDE.md` rules for them. Add `--apply` to write them. |
+| `npx inspecto outcomes` | How much of each session's code made it into git and is still there. |
+| `npx inspecto wrapped` | Your year in Claude Code as six shareable cards (names hidden by default). |
+| `inspecto statusline install` | Shows a live grade, cost and a warning in Claude Code's status bar. Needs `npm i -g inspecto` first. |
+
+The status bar looks like this while you work:
+
+```
+inspecto B+ 84 · $1.84 · cache 72% · `npm test` failed 3× · inspecto fix
+```
+
+<p align="center">
+  <img src="docs/images/wrapped-grid-light.png" alt="The six inspecto wrapped cards: sessions, what you built, your rhythm heatmap, your toolbox, your craft and your persona" width="720">
+</p>
+<p align="center"><sub><code>inspecto wrapped</code>, built from sample data.</sub></p>
+
+<details>
+<summary><b>Every other command</b></summary>
+
+| Command | What it does |
+|---|---|
+| `inspecto fleet` | One table of every session: project, model, length, cost, grade. |
+| `inspecto trend --since 14d` | Flags metrics that got more than 30% worse recently. |
+| `inspecto cache-check` | Finds sessions where the prompt cache barely worked (less than 5% hits), which can make them cost many times more. |
+| `inspecto calibrate` | Tests which metrics predict lasting code in *your* history. |
+| `inspecto report --outcomes` | Writes one self-contained HTML report you can share. |
+| `inspecto compare --projects a,b` | Compares projects side by side. |
+| `inspecto watch` | Re-grades the current session live as you work. |
+| `inspecto list` | Lists your projects and sessions. |
+| `inspecto export --since 30d` | Exports per-session numbers with no prompts, code, paths or names, for a team baseline. |
+| `inspecto config validate` | Shows your effective `.inspecto.json` settings. |
+| `inspecto cache clear` | Deletes the saved grades (`~/.claude/inspecto-cache.db`). |
+
+Most commands accept `--since 7d|14d|30d|90d`, `--project <name>`, `--json` and `--data-dir <path>`. Run `inspecto <command> --help` for details.
+
+</details>
+
+---
+
+## Your data stays on your computer
+
+- inspecto only reads files Claude Code already wrote to `~/.claude/projects/`.
+- It makes no network calls. No telemetry, no account, no API key.
+- On its own it writes only caches: saved grades at `~/.claude/inspecto-cache.db`, plus a small temp file per session for the status bar. `fix --apply`, `report`, `wrapped` and `statusline install` write a file only when you run them.
+- `wrapped` hides project and file names unless you add `--names`, so it's safe to post.
+
+Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md)
+
+---
+
+## How the grade works
+
+Each session gets a score from 0 to 100 and a letter from A+ to F. The score is a weighted mix of these checks:
+
+| Check | What it asks | Good | Weight |
+|---|---|---|---|
+| Task completion | When Claude said "I'll do X", did it do X? | ≥ 90% | 18% |
+| Tool error rate | How often did Claude's tool calls fail? | ≤ 5% | 16% |
+| Retry density | How often did you have to repeat yourself? | ≤ 10% | 14% |
+| Cache hit rate | How much of the input was served cheaply from cache? | ≥ 50% | 11% |
+| Tokens per edit | How much output did each file change take? | ≤ 5,000 | 11% |
+| Thinking use | How often did Claude think before acting? | ≥ 30% | 9% |
+| Tool variety | Did Claude use the right tool, or only a narrow set? | ≥ 0.60 | 6% |
+| Subagent share | How much of the work went to subagents? | < 60% | 5% |
+| Session cost | Estimated cost of the session | ≤ $2 | 5% |
+| MCP use | How many turns used MCP tools (always full marks) | — | 5% |
+| Reads before edit | Read calls before each edit | ≥ 4 | not graded |
+| Full-file rewrites | Share of edits that rewrote a whole file | ≤ 25% | not graded |
+
+The last two are shown but not graded, because of the calibration result above. To grade them anyway, or to change any threshold, add a `.inspecto.json` to your repo:
+
+```json
+{
+  "weights": { "readsPerEdit": 0.10 },
+  "thresholds": { "sessionCost": { "healthy": 5.00, "warning": 10.00 } }
+}
+```
+
+The grade is a heuristic to help you spot patterns. It doesn't measure how good a developer is, and it doesn't prove productivity or savings.
+
+---
+
+## Fixing what it finds
+
+| If inspecto says… | Try this |
+|---|---|
+| A mistake keeps repeating | Run `inspecto fix --apply`. It adds a rule to `CLAUDE.md`, and later runs tell you if it helped. |
+| Sessions over $50 | Start a fresh session (`/clear`) for each task. Every message re-sends the whole conversation, so long sessions get pricier per turn. |
+| Low cache hit rate | Restart or update Claude Code. Run `inspecto cache-check` to see which sessions were affected. |
+| You keep rephrasing | Put the requirement Claude keeps missing into `CLAUDE.md`, or split the task into smaller asks. |
+| Tool errors are high | Tell Claude in `CLAUDE.md` to check that a file or path exists before using it. |
+| Task completion is low | Ask for one step at a time and have it finish each before moving on. |
+
+The single most useful thing is a short, specific `CLAUDE.md` in each repo.
+
+---
+
+## Using it in CI
+
+`audit`, `trend` and `cache-check` exit with code 1 when something is wrong, so you can use them in CI or git hooks. Add `--no-fail` to only warn.
 
 | Command | Exits 1 when… |
 |---|---|
-| `inspecto audit` | Overall grade is D or F (score < 67) |
-| `inspecto trend` | Any metric has status `regression` |
-| `inspecto cache-check` | Any session has a cache anomaly |
-| `inspecto compare` | Never (comparison is informational) |
+| `inspecto audit` | The latest session grades D or F |
+| `inspecto trend` | A metric got more than 30% worse |
+| `inspecto cache-check` | A session's cache barely worked |
 
-Use `--no-fail` to always exit 0:
+Bare `inspecto` (the summary) never fails a build. Before v1.4.0 it ran `audit`; if a script relied on that, call `inspecto audit` instead.
+
+`--json` and `--format csv` give machine-readable output.
+
+---
+
+## Install
 
 ```bash
-# In a pre-push hook — warn but don't block
-npx inspecto audit --no-fail
-
-# In CI — fail the build on regressions
-npx inspecto trend --since 14d
-
-# Export metrics for a dashboard without blocking
-npx inspecto audit --format csv --no-fail >> metrics.csv
+npx inspecto            # run without installing
+npm install -g inspecto # or install it, needed for the status bar
 ```
+
+Needs Node.js 22.5 or newer. Works on macOS, Linux and Windows.
+
+**Something missing or wrong?** inspecto collects no usage data, so the only way the author hears from you is an [issue](https://github.com/rahulbhardwaj94/inspecto/issues). A ⭐ helps others find it.
 
 ---
 
-### Output formats
+## More
 
-```bash
-# Structured JSON
-npx inspecto audit --json
-npx inspecto trend --json
+- [CHANGELOG.md](CHANGELOG.md): what changed in each version.
+- **Development:** `git clone https://github.com/rahulbhardwaj94/inspecto.git && cd inspecto && npm install && npm test`. [CLAUDE.md](CLAUDE.md) explains the architecture.
+- [MIT License](LICENSE).
 
-# CSV (RFC 4180)
-npx inspecto audit --format csv
-npx inspecto trend --format csv
-
-# Pseudonymous per-session history for a private team baseline
-npx inspecto export --since 30d > inspecto-metrics.csv
-npx inspecto export --since 30d --format json > inspecto-metrics.json
-```
-
-`audit --format csv` — one row per metric: `name,value,status,label`
-
-`trend --format csv` — one row per metric: `name,recentAvg,fullAvg,changePercent,status`
-
-`export` — one row per session using generated labels such as `session-001`, `week-1`, and `project-1`. It excludes prompts, tool inputs/results, paths, source code, git branches, user names, and raw session IDs. Review the export before sharing it, just as you would any diagnostic report.
-
----
-
-### Global options
-
-| Flag | Commands | Description |
-|---|---|---|
-| `--json` | all | Output structured JSON |
-| `--format <fmt>` | `audit`, `trend`, `export` | Output format: `json` or `csv` |
-| `--no-fail` | `audit`, `trend`, `cache-check`, `compare` | Always exit 0 |
-| `--data-dir <path>` | all | Custom Claude data directory (default: `~/.claude`) |
-| `--project <name>` | `audit`, `trend`, `compare`, `list`, `export` | Filter to a specific project |
-| `--since <duration>` | `trend`, `cache-check`, `export` | Time range (e.g., `7d`, `14d`, `30d`) |
-| `--sessions` | `list` | Show sessions view instead of projects view |
-| `--limit <n>` | `outcomes`, `fleet`, `report` | Maximum sessions to analyze (default: 50) |
-| `--outcomes` | `report` | Include git outcome verification in the HTML report |
-| `--out <path>` | `report` | Output file path (default: `inspecto-report.html`) |
-| `--interval <ms>` | `watch` | Polling interval fallback in ms (default: 2000) |
-
----
-
-### What to do about it
-
-Once inspecto shows you where sessions are degrading, here's how to fix each metric:
-
-| Metric | Symptom | Fix |
-|---|---|---|
-| **Reads/edit low** | Claude edits files without reading context | Add a `CLAUDE.md` at your project root. Claude reads it at session start — use it to list key files, conventions, and "always read X before touching Y" rules. |
-| **Rewrite ratio high** | Claude rewrites entire files instead of making surgical edits | Add to your `CLAUDE.md`: *"Prefer Edit over Write. Never rewrite a file you haven't read. Make the smallest change that solves the problem."* |
-| **Cache hit rate low** | Token costs inflating 10-20× silently | Keep conversations shorter — long sessions blow past the cache window. Start a fresh session per task rather than one mega-session per day. If `cache-check` flags you, restart Claude Code entirely (the March 2026 bug was a process-level cache corruption). |
-| **Task completion low** | Claude states intent but doesn't follow through | Break large tasks into explicit steps. Tell Claude: *"Complete each step fully before moving to the next. Do not summarize what you're about to do — just do it."* |
-| **Retry density high** | You're repeating yourself — Claude keeps misunderstanding | You're probably under-specifying. Provide a concrete example of the output you want in the first message. If retries persist across sessions, the root cause is usually a missing `CLAUDE.md` or a context window that's too wide. |
-| **Tool diversity low** | Claude over-relies on a narrow tool set (e.g. only Bash) | Prompt explicitly: *"Use the most specific tool available. Prefer Read over Bash for file reads. Prefer Edit over Write for modifications."* This is also a sign of a degraded model — track it over time with `inspecto trend`. |
-| **Tokens/edit high** | High token burn per productive action | Shorten your context. Close irrelevant files in the IDE, trim `CLAUDE.md` to essentials, and use `--project` to scope sessions to one repo at a time. |
-| **Subagent overhead high** | Subagents doing most of the work but graded separately | Run `inspecto audit` on the root session — it now aggregates subagent turns automatically. If overhead is still high, your orchestration prompts may be spawning agents that duplicate work. |
-| **Tool error rate high** | Claude's tool calls are frequently failing | Usually means Claude is passing bad arguments or calling tools on files that don't exist. Add stricter preconditions in `CLAUDE.md`: *"Verify a file exists before reading it. Verify a path before writing."* |
-| **Thinking utilization low** | Extended thinking is rarely being used | For complex tasks, prompt Claude to think before acting: *"Think carefully before making any changes."* Low thinking utilization often correlates with shallow analysis and increased retry density. |
-| **Session cost high** | Spending more than expected per session | Scope sessions narrowly — one task, one repo. Use `--project` to avoid scanning large unrelated projects. Frequent cache misses compound cost; check `cache-check` if cost spiked unexpectedly. |
-
-**The single highest-leverage fix:** a well-structured `CLAUDE.md`. It front-loads context so Claude reads less at runtime, forces it to follow project conventions, and survives session restarts without re-explaining yourself.
-
----
-
-## Development
-
-```bash
-git clone https://github.com/rahulbhardwaj94/inspecto.git
-cd inspecto
-npm install
-npm test
-npm run build
-node dist/index.js
-```
-
-Architecture:
-
-```
-src/
-├── parser/        # Streaming JSONL reader + session builder (merges streaming chunks, aggregates subagents)
-├── metrics/       # 12 pure-function quality metrics + composite grader
-├── anomaly/       # Baseline computation + regression detection + cache anomaly
-├── outcomes/      # Session → git linking + edit survival analysis (log/show/blame)
-├── calibrate/     # Correlates metrics against outcomes (pearson/spearman + verdicts)
-├── reporter/      # Terminal (chalk + cli-table3), JSON, CSV, and HTML output modes
-├── commands/      # audit, trend, export, cache-check, compare, list, watch,
-│                  #   outcomes, fleet, calibrate, report
-├── cache/         # SQLite grade-result cache (node:sqlite, ~/.claude/inspecto-cache.db)
-├── config/        # .inspecto.json config loader + per-metric threshold/weight overrides
-└── utils/         # Levenshtein, paths, duration parsing, formatting, concurrency helper
-```
-
-Key technical details:
-- **Streaming parse**: `readline` + `createReadStream` — never loads full files into memory
-- **Subagent aggregation**: discovers `{sessionId}/subagents/agent-*.jsonl`, tags each turn with `agentId`, and merges into the parent session's turn list
-- **Chunk deduplication**: assistant responses come as multiple JSONL records sharing `message.id`; content blocks are merged and only the final chunk's `output_tokens` is used
-- **No external APIs**: all analysis is local. No network calls. Works offline
-- **Model-aware cost estimate**: uses the recorded model and 5-minute/1-hour cache-write split when present. Older aggregate-only logs use the 5-minute write rate. Verify estimates against Anthropic billing
-- **Concurrency**: `trend` and `compare` parse up to 16 session files in parallel (semaphore-limited) so large histories don't block
-- **Grade cache**: computed `GradeResult` objects are persisted in `~/.claude/inspecto-cache.db` (SQLite via `node:sqlite`). Cache key = `sha256(path:mtime)`. Re-runs over unchanged sessions skip parsing entirely — typically 2–3× faster
-- **CI exit codes**: `audit` exits 1 on D/F grades, `trend` exits 1 on any regression, `cache-check` exits 1 on any anomaly. All suppressed by `--no-fail`
-- **Format resilience**: reads the `version` field on every JSONL record and warns when the format diverges from the expected version. Unknown record types are surfaced in output rather than silently dropped
-
----
-
-## Privacy, security, and license
-
-- [Privacy](PRIVACY.md)
-- [Security policy](SECURITY.md)
-- [MIT License](LICENSE)
-
-Claude and Claude Code are trademarks of Anthropic PBC. Inspecto is independent and is not affiliated with or endorsed by Anthropic.
+inspecto is independent and isn't affiliated with or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic PBC.
