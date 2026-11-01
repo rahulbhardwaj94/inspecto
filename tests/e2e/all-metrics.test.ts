@@ -438,4 +438,20 @@ describe("gradeSession (all 12 metrics end-to-end)", () => {
     const grade = gradeSession(session);
     expect(grade.score).toBeGreaterThan(50);
   });
+
+  it("marks reads-per-edit and rewrite-ratio informational by default", () => {
+    const grade = gradeSession(session);
+    const informational = grade.metrics.filter((m) => m.informational).map((m) => m.name);
+    expect(informational.sort()).toEqual(["reads-per-edit", "rewrite-ratio"]);
+    // Still computed and shown, just not graded.
+    expect(grade.metrics.find((m) => m.name === "reads-per-edit")?.value).toBeCloseTo(2.67, 2);
+  });
+
+  it("grades a demoted metric again when .inspecto.json gives it a weight", () => {
+    const defaults = gradeSession(session);
+    const weighted = gradeSession(session, { weights: { readsPerEdit: 0.14 } });
+    expect(weighted.metrics.find((m) => m.name === "reads-per-edit")?.informational).toBeUndefined();
+    // 2.67 reads/edit scores ~67, below this session's default composite.
+    expect(weighted.score).toBeLessThan(defaults.score);
+  });
 });

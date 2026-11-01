@@ -1,12 +1,34 @@
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import type { GradeResult } from "../parser/types.js";
+import { GRADER_VERSION } from "../metrics/grader.js";
 import { getCacheFilePath } from "../utils/paths.js";
 
 let db: DatabaseSync | null = null;
 
+/**
+ * Load node:sqlite on first use, swallowing only its ExperimentalWarning.
+ * On Node 22 that warning otherwise prints on every run — including inside
+ * the status bar — and reads as a crash to a first-time user.
+ */
+function loadSqlite(): typeof import("node:sqlite") {
+  const originalEmit = process.emitWarning;
+  process.emitWarning = function (warning: string | Error, ...args: unknown[]) {
+    const first = args[0] as string | { type?: string } | undefined;
+    const type = typeof first === "string" ? first : first?.type;
+    if (type === "ExperimentalWarning" && String(warning).includes("SQLite")) return;
+    return (originalEmit as (...a: unknown[]) => void).call(process, warning, ...args);
+  } as typeof process.emitWarning;
+  try {
+    return process.getBuiltinModule("node:sqlite");
+  } finally {
+    process.emitWarning = originalEmit;
+  }
+}
+
 function getDb(): DatabaseSync {
   if (!db) {
+    const { DatabaseSync } = loadSqlite();
     db = new DatabaseSync(getCacheFilePath());
     db.exec(`
       CREATE TABLE IF NOT EXISTS grade_cache (
@@ -20,7 +42,7 @@ function getDb(): DatabaseSync {
 
 function makeCacheKey(sessionPath: string, mtime: Date): string {
   return createHash("sha256")
-    .update(`${sessionPath}:${mtime.getTime()}`)
+    .update(`${sessionPath}:${mtime.getTime()}:v${GRADER_VERSION}`)
     .digest("hex");
 }
 

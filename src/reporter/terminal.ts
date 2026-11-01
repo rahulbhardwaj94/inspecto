@@ -72,8 +72,10 @@ export function renderAuditReport(session: Session, grade: GradeResult): string 
 
   for (const metric of grade.metrics) {
     const displayName = METRIC_DISPLAY_NAMES[metric.name] ?? metric.name;
-    const icon = STATUS_ICONS[metric.status] ?? "";
-    table.push([displayName, metric.label, `${icon} ${STATUS_LABELS[metric.status] ?? metric.status}`]);
+    const statusCell = metric.informational
+      ? chalk.dim("· info (not graded)")
+      : `${STATUS_ICONS[metric.status] ?? ""} ${STATUS_LABELS[metric.status] ?? metric.status}`;
+    table.push([displayName, metric.label, statusCell]);
   }
 
   lines.push(table.toString());

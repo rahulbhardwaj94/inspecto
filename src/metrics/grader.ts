@@ -1,8 +1,10 @@
 /**
- * Composite grading from all 8 quality metrics.
+ * Composite grading from the 12 session metrics.
  *
  * Each metric is scored 0-100 based on its thresholds, then weighted
  * into a composite score mapped to a letter grade A+ through F.
+ * A metric with weight 0 is still computed and shown, but marked
+ * informational: it never moves the grade or produces a tip.
  */
 
 import type { GradeResult, MetricResult, Session } from "../parser/types.js";
@@ -19,6 +21,17 @@ import { computeToolErrorRate } from "./tool-error-rate.js";
 import { computeThinkingUtilization } from "./thinking-utilization.js";
 import { computeMcpUsage } from "./mcp-usage.js";
 import { computeSessionCost } from "./session-cost.js";
+import { DEFAULT_WEIGHTS } from "../config/types.js";
+
+/**
+ * Bump whenever weights or scoring change, so cached grades from an older
+ * scheme are recomputed instead of mixed into trends.
+ *
+ * v2: reads-per-edit and rewrite-ratio demoted to informational (weight 0).
+ * In calibration against git outcomes both moved opposite to theory, and
+ * reads-per-edit fired on ~80% of sessions — it graded nearly everyone D.
+ */
+export const GRADER_VERSION = 2;
 
 interface MetricWeight {
   compute: (session: Session) => MetricResult;
@@ -34,43 +47,43 @@ function buildMetricWeights(config?: InspectoConfig): MetricWeight[] {
   return [
     {
       compute: (session) => computeReadsPerEdit(session, t.readsPerEdit),
-      weight: w.readsPerEdit ?? 0.14,
+      weight: w.readsPerEdit ?? DEFAULT_WEIGHTS.readsPerEdit,
       // 0 reads → 0, 2 reads → 50, 4+ reads → 100
       score: (v) => clamp(v / 4 * 100, 0, 100),
     },
     {
       compute: (session) => computeRewriteRatio(session, t.rewriteRatio),
-      weight: w.rewriteRatio ?? 0.11,
+      weight: w.rewriteRatio ?? DEFAULT_WEIGHTS.rewriteRatio,
       // 0 ratio → 100, 0.25 → 50, 0.5+ → 0 (inverted: lower is better)
       score: (v) => clamp((1 - v / 0.5) * 100, 0, 100),
     },
     {
       compute: (session) => computeCacheHitRate(session, t.cacheHitRate),
-      weight: w.cacheHitRate ?? 0.11,
+      weight: w.cacheHitRate ?? DEFAULT_WEIGHTS.cacheHitRate,
       // 0% → 0, 50% → 100
       score: (v) => clamp(v / 0.5 * 100, 0, 100),
     },
     {
       compute: (session) => computeTaskCompletion(session, t.taskCompletion),
-      weight: w.taskCompletion ?? 0.10,
+      weight: w.taskCompletion ?? DEFAULT_WEIGHTS.taskCompletion,
       // 0.7 → 0, 0.9 → 50, 1.0 → 100
       score: (v) => clamp((v - 0.7) / 0.3 * 100, 0, 100),
     },
     {
       compute: (session) => computeRetryDensity(session, t.retryDensity),
-      weight: w.retryDensity ?? 0.07,
+      weight: w.retryDensity ?? DEFAULT_WEIGHTS.retryDensity,
       // 0% → 100, 10% → 60, 25%+ → 0 (inverted)
       score: (v) => clamp((1 - v / 0.25) * 100, 0, 100),
     },
     {
       compute: (session) => computeToolDiversity(session, t.toolDiversity),
-      weight: w.toolDiversity ?? 0.06,
+      weight: w.toolDiversity ?? DEFAULT_WEIGHTS.toolDiversity,
       // 0 → 0, 0.4 → 50, 0.6+ → 100
       score: (v) => clamp(v / 0.6 * 100, 0, 100),
     },
     {
       compute: (session) => computeTokensPerEdit(session, t.tokensPerEdit),
-      weight: w.tokensPerEdit ?? 0.11,
+      weight: w.tokensPerEdit ?? DEFAULT_WEIGHTS.tokensPerEdit,
       // 5000 → 100, 10000 → 50, 15000+ → 0 (inverted)
       score: (v) => clamp((1 - (v - 5000) / 10000) * 100, 0, 100),
     },
@@ -82,13 +95,13 @@ function buildMetricWeights(config?: InspectoConfig): MetricWeight[] {
     },
     {
       compute: computeToolErrorRate,
-      weight: 0.08,
+      weight: 0.16,
       // 0% → 100, 5% → 83, 15% → 50, 30%+ → 0 (inverted: lower is better)
       score: (v) => clamp((1 - v / 0.30) * 100, 0, 100),
     },
     {
       compute: computeThinkingUtilization,
-      weight: 0.07,
+      weight: 0.09,
       // 0% → 0, 10% → 33, 30%+ → 100
       score: (v) => clamp(v / 0.30 * 100, 0, 100),
     },
@@ -134,10 +147,11 @@ export function gradeSession(session: Session, config?: InspectoConfig): GradeRe
   let totalWeight = 0;
 
   for (const mw of metricWeights) {
-    const result = mw.compute(session);
+    const computed = mw.compute(session);
+    const result: MetricResult = mw.weight > 0 ? computed : { ...computed, informational: true };
     metrics.push(result);
 
-    if (result.value !== null) {
+    if (result.value !== null && mw.weight > 0) {
       weightedSum += mw.score(result.value) * mw.weight;
       totalWeight += mw.weight;
     }

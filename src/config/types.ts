@@ -38,12 +38,17 @@ export const DEFAULT_THRESHOLDS = {
   sessionCost: { healthy: 2.00, warning: 5.00 },
 } satisfies Required<NonNullable<InspectoConfig["thresholds"]>>;
 
+/**
+ * reads-per-edit and rewrite-ratio default to 0 (informational): calibration
+ * against git outcomes found neither predicts edit survival in the expected
+ * direction. Set a weight in .inspecto.json to grade them again.
+ */
 export const DEFAULT_WEIGHTS = {
-  readsPerEdit: 0.14,
-  rewriteRatio: 0.11,
+  readsPerEdit: 0,
+  rewriteRatio: 0,
   cacheHitRate: 0.11,
-  taskCompletion: 0.10,
-  retryDensity: 0.07,
+  taskCompletion: 0.18,
+  retryDensity: 0.14,
   toolDiversity: 0.06,
   tokensPerEdit: 0.11,
 } satisfies Required<NonNullable<InspectoConfig["weights"]>>;
